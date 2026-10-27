@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi tarjeta de sellos</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8eef4;--ink:#1b2a41;--mute:#5d6b80;--sky:#6fb3e0;--navy:#0d4a73;--gold:#b97a00;--line:#b8c4d2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1824}}
+:root[data-theme="dark"]{--bg:#0f1824}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);line-height:1.4}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+.card{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 10px 30px rgba(20,40,70,.22)}
+.card header{background:var(--sky);color:#0d3556;padding:18px 20px;font-size:24px;font-weight:800}
+.body{padding:16px 20px 20px}
+.code{font-weight:800;font-size:20px;letter-spacing:.04em}
+.grid{display:grid;gap:10px;margin:16px 0}
+.st{width:100%;aspect-ratio:1;border-radius:50%;border:3px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--line);font-weight:600;font-size:14px}
+.st.on{border:4px solid var(--navy);border-style:solid;color:var(--navy);font-size:22px;transform:rotate(-6deg)}
+.st.on:nth-child(3n){transform:rotate(5deg)}
+.card.ready .st.on{border-color:var(--gold);color:var(--gold)}
+.st.pop{animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(2) rotate(-20deg);opacity:0}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.st.pop{animation:none}}
+.msg{font-size:20px;font-weight:800;margin:4px 0;color:var(--navy)}
+.card.ready .msg{color:var(--gold)}
+.rw{color:var(--mute);margin:0}
+.qr{background:#fff;border-radius:18px;padding:10px;margin:22px auto 0;width:min(100%,380px)}
+.qr svg{display:block;width:100%;height:auto}
+.small{color:var(--mute);font-size:14px;text-align:center;margin:12px 4px 0}
+.note{background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:14px;color:var(--ink)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+var KEY="tarjeta-cliente-v1",app=document.getElementById("app");
+function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function unb64u(t){t=t.replace(/-/g,"+").replace(/_/g,"/");while(t.length%4)t+="=";var s=atob(t),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+function dec(tok){
+  var p=String(tok).split(".");if(p[0]!=="TS2"||p.length!==3)return null;
+  try{var o=JSON.parse(new TextDecoder().decode(unb64u(p[1])));if(o&&o.i&&typeof o.s==="number"&&typeof o.v==="number"&&o.g>0)return o}catch(e){}
+  return null;
+}
+function qrSvg(t){
+  var q=qrcode(0,"L");q.addData(t);q.make();var n=q.getModuleCount(),d="";
+  for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))d+="M"+(c+4)+" "+(r+4)+"h1v1h-1z";
+  return '<svg viewBox="0 0 '+(n+8)+' '+(n+8)+'" shape-rendering="crispEdges" role="img" aria-label="QR de tu tarjeta"><rect width="100%" height="100%" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';
+}
+var saved=null,note="",fresh=false;
+try{saved=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+var h=location.hash.replace(/^#/,"");
+if(h){
+  var o=dec(h);
+  if(!o)note="No pude leer ese QR. Pedile al local que lo genere de nuevo.";
+  else if(!saved||!saved.o){saved={o:o,tok:h};fresh=false}
+  else if(o.i!==saved.o.i){
+    if(confirm("Ya tenés la tarjeta "+saved.o.i+". ¿Reemplazarla por la tarjeta "+o.i+"?"))saved={o:o,tok:h};
+  }else if(o.v>saved.o.v){saved={o:o,tok:h};fresh=true}
+  else if(o.v<saved.o.v)note="Ese QR es de una versión anterior. Te mostramos tu tarjeta actual.";
+  try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(e){}
+}
+if(!saved||!saved.o){
+  app.innerHTML=(note?'<p class="note">'+esc(note)+'</p>':'')+'<div class="card"><header>Tu tarjeta de sellos</header><div class="body"><p class="msg">Todavía no tenés tarjeta</p><p class="rw">Pedila en el local y escaneá el QR que te muestren con la cámara del celular.</p></div></div>';
+  return;
+}
+var c=saved.o,g=c.g,cols=Math.min(g,g<=10?5:g<=18?6:8),ready=c.s>=g,cur=Math.min(c.s,g),cells="";
+for(var i=0;i<g;i++)cells+='<div class="st'+(i<cur?" on":"")+(fresh&&i===cur-1?" pop":"")+'">'+(i<cur?"★":(i+1))+'</div>';
+var left=g-c.s;
+app.innerHTML=(note?'<p class="note">'+esc(note)+'</p>':'')
+ +'<section class="card'+(ready?" ready":"")+'"><header>'+esc(c.t||"Tarjeta de sellos")+'</header><div class="body">'
+ +'<div class="code">TARJETA-'+esc(c.i)+'</div>'
+ +'<div class="grid" style="grid-template-columns:repeat('+cols+',1fr)">'+cells+'</div>'
+ +'<p class="msg">'+(ready?"¡Premio listo! Mostrala en el local":"Te faltan "+left+(left===1?" sello":" sellos"))+'</p>'
+ +'<p class="rw">Premio: '+esc(c.r||"")+'</p></div></section>'
+ +'<div class="qr">'+qrSvg(c.u?c.u.replace(/#.*$/,"")+"#"+saved.tok:saved.tok)+'</div>'
+ +'<p class="small">Mostrale este QR al local cada vez que vengas. Hacé una captura de pantalla: si perdés el celular, el local puede recuperar tu tarjeta con este número.</p>';
+})();
+</script>
+</body>
+</html>

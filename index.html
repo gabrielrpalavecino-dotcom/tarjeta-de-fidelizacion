@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestión de tarjetas</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f5f8;--surface:#fff;--ink:#1b2a41;--mute:#5d6b80;--line:#d9e0e8;--sky:#6fb3e0;--sky-ink:#0d4a73;--gold:#e0a526;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1824;--surface:#172336;--ink:#e8eef6;--mute:#93a3b8;--line:#2a3a52;--sky:#5aa6d6;--sky-ink:#bfe2f7;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1824;--surface:#172336;--ink:#e8eef6;--mute:#93a3b8;--line:#2a3a52;--sky:#5aa6d6;--sky-ink:#bfe2f7;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.4}
+main{max-width:560px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:28px;font-weight:800;margin:0}
+.sub{color:var(--mute);margin:2px 0 16px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;min-height:44px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.stats{display:flex;flex-wrap:wrap;border-block:1px solid var(--line);margin-bottom:18px}
+.stats div{flex:1 1 33%;padding:12px 0;text-align:center;border-bottom:1px solid var(--line)}
+.stats div:nth-last-child(-n+3){border-bottom:0}
+.stats b{display:block;font-size:28px;font-weight:800;line-height:1.1}
+.stats span{color:var(--mute);font-size:13px}
+.primary{background:var(--sky-ink);color:#fff;border-color:var(--sky-ink);font-weight:600}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .primary{background:var(--sky);color:#0f1824;border-color:var(--sky)}}
+.big{width:100%;min-height:62px;font-size:19px;margin-bottom:10px}
+.small{font-size:13px;color:var(--mute);margin:10px 0 0}
+.sheet{position:fixed;inset:0;background:rgba(10,20,35,.55);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet.open{display:flex}
+.panel{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto}
+.panel h2{margin:0 0 8px;font-size:22px}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+.panel input,.panel textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;min-height:44px}
+.acts{display:flex;gap:8px;margin-top:10px}
+.acts button{flex:1}
+.gold{background:var(--gold);border-color:var(--gold);color:#1b2a41;font-weight:800}
+.qrb{background:#fff;border-radius:14px;padding:8px;width:min(100%,340px);margin:10px auto}
+.qrb svg{display:block;width:100%;height:auto}
+.stars{font-size:30px;letter-spacing:.1em;margin:6px 0;word-break:break-all}
+.hist{font-size:14px;color:var(--mute);margin:8px 0 0;padding-left:18px}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div><h1 id="title"></h1><p class="sub" id="reward"></p></div><button id="cfg">Ajustes</button></div>
+  <div class="stats">
+    <div><b id="stE">0</b><span>tarjetas emitidas</span></div>
+    <div><b id="stA">0</b><span>activas (30 días)</span></div>
+    <div><b id="stI">0</b><span>sin volver (+30 días)</span></div>
+    <div><b id="stD">0</b><span>sellos dados</span></div>
+    <div><b id="stW">0</b><span>sellos esta semana</span></div>
+    <div><b id="stC">0</b><span>premios canjeados</span></div>
+  </div>
+  <button class="primary big" id="new">Nueva tarjeta</button>
+  <button class="primary big" id="scan">Escanear tarjeta de un cliente</button>
+  <button class="big" id="find">Buscar tarjeta por número</button>
+  <p class="small">Las tarjetas son anónimas: no se guarda nombre, teléfono ni mail. Las estadísticas son de tarjetas, no de personas, y viven en este celular: hacé la copia de seguridad desde Ajustes.</p>
+</main>
+
+<div class="sheet" id="sQR"><div class="panel">
+  <h2 id="qId"></h2>
+  <div class="qrb" id="qrBox"></div>
+  <p class="small" id="qMsg"></p>
+  <div class="acts"><button class="primary" id="qDone">Listo</button></div>
+</div></div>
+
+<div class="sheet" id="sScan"><div class="panel">
+  <h2>Escanear tarjeta</h2>
+  <video id="scVideo" playsinline muted style="width:100%;border-radius:12px;background:#000;min-height:180px"></video>
+  <p class="small" id="scMsg"></p>
+  <div class="acts"><button id="scPhoto">Leer desde foto</button><button id="scClose">Cerrar</button></div>
+  <input id="scFile" type="file" accept="image/*" style="display:none">
+  <label for="scText">O pegá el código</label>
+  <textarea id="scText" rows="2" placeholder="TS2...."></textarea>
+  <div class="acts"><button id="scRead">Leer código</button></div>
+</div></div>
+
+<div class="sheet" id="sCard"><div class="panel">
+  <h2 id="cId"></h2>
+  <div class="stars" id="cStars"></div>
+  <p class="small" id="cInfo"></p>
+  <div class="acts"><button class="primary" id="bOk">Validar +1 sello</button><button class="gold" id="bRedeem">Canjear premio</button></div>
+  <div class="acts"><button id="bClose">Cerrar</button></div>
+</div></div>
+
+<div class="sheet" id="sFind"><div class="panel">
+  <h2>Buscar tarjeta</h2>
+  <label for="fId">Número de tarjeta (por ejemplo 4K7Q2)</label><input id="fId" autocomplete="off" autocapitalize="characters">
+  <div class="acts"><button class="primary" id="fGo">Buscar</button><button id="fClose">Cerrar</button></div>
+  <div id="fOut"></div>
+</div></div>
+
+<div class="sheet" id="sCfg"><div class="panel">
+  <h2>Ajustes</h2>
+  <label for="gTitle">Nombre de la tarjeta</label><input id="gTitle">
+  <label for="gReward">Premio</label><input id="gReward">
+  <label for="gGoal">Sellos para ganar el premio</label><input id="gGoal" type="number" min="1" max="30" inputmode="numeric">
+  <label for="gPass">Clave del local</label><input id="gPass" autocomplete="off">
+  <p class="small">Firma cada tarjeta para que nadie pueda inventar sellos. Tiene que ser la misma en todos los celulares que escaneen. Si la cambiás, las tarjetas anteriores dejan de valer. Mínimo 6 caracteres.</p>
+  <label for="gLink">Link de la tarjeta del cliente</label><input id="gLink" type="url" inputmode="url">
+  <p class="small">Es la página que abre el cliente al escanear el QR. Tiene que poder abrirse sin iniciar sesión.</p>
+  <label for="gMe">Link de esta app de gestión</label><input id="gMe" type="url" inputmode="url">
+  <p class="small">Va dentro del QR del cliente: así podés escanearlo con la cámara normal del celular y se abre acá. Cambialo si la subís a tu propio hosting.</p>
+  <div class="acts"><button class="primary" id="gSave">Guardar ajustes</button><button id="gCancel">Cerrar</button></div>
+  <label for="bk">Copia de seguridad (tarjetas y estadísticas)</label>
+  <div class="acts"><button id="exp">Copiar</button><button id="imp">Pegar</button></div>
+  <textarea id="bk" rows="3"></textarea>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script>
+(function(){
+var KEY="gestion-tarjetas-v1",DAY=864e5;
+var S={title:"Tarjeta de sellos",reward:"Un pan gratis",goal:10,pass:"",link:"https://claude.ai/artifact/4bRpqKzLxA1DryBTsc1p5s",me:"https://claude.ai/artifact/3ziaj5xB7EWTDiWEDUxjvK",cards:{},ops:[]};
+if(/\.github\.io$/.test(location.hostname)){var base=location.origin+location.pathname;S.me=base;S.link=base.replace(/[^\/]*$/,"")+"tarjeta.html"}
+try{var raw=localStorage.getItem(KEY);if(raw)Object.assign(S,JSON.parse(raw))}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function $(id){return document.getElementById(id)}
+function show(id,on){$(id).classList[on?"add":"remove"]("open")}
+function stats(){
+  var now=Date.now(),ids=Object.keys(S.cards),act=0,ina=0,sel=0,can=0,wk=0;
+  ids.forEach(function(i){var c=S.cards[i];if(now-c.l<30*DAY)act++;else if(c.s>0)ina++});
+  S.ops.forEach(function(o){if(o.k==="s"){sel++;if(now-o.t<7*DAY)wk++}else if(o.k==="c")can++});
+  $("title").textContent=S.title;document.title=S.title;$("reward").textContent="Cada "+S.goal+" sellos: "+S.reward;
+  $("stE").textContent=ids.length;$("stA").textContent=act;$("stI").textContent=ina;$("stD").textContent=sel;$("stW").textContent=wk;$("stC").textContent=can;
+}
+
+/* Firma: HMAC con la clave del local; nadie puede falsificar sellos sin ella */
+var te=new TextEncoder(),td=new TextDecoder(),kc=null,kp=null;
+function b64u(buf){var s="",a=new Uint8Array(buf);for(var i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function unb64u(t){t=t.replace(/-/g,"+").replace(/_/g,"/");while(t.length%4)t+="=";var s=atob(t),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+function key(){
+  if(kc&&kp===S.pass)return Promise.resolve(kc);
+  return crypto.subtle.importKey("raw",te.encode(S.pass),"PBKDF2",false,["deriveKey"]).then(function(k){
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt:te.encode("tarjeta-sellos-v2"),iterations:100000,hash:"SHA-256"},k,{name:"HMAC",hash:"SHA-256",length:256},false,["sign"])
+  }).then(function(k){kc=k;kp=S.pass;return k});
+}
+function sig(pl){return key().then(function(k){return crypto.subtle.sign("HMAC",k,te.encode(pl))}).then(function(s){return b64u(s).slice(0,16)})}
+function mk(o){var pl=b64u(te.encode(JSON.stringify(o)));return sig(pl).then(function(s){return "TS2."+pl+"."+s})}
+function chk(tok){
+  var p=String(tok).split(".");if(p[0]!=="TS2"||p.length!==3)return Promise.reject();
+  return sig(p[1]).then(function(s){if(s!==p[2])throw 0;return JSON.parse(td.decode(unb64u(p[1])))});
+}
+function qrSvg(t){
+  var q=qrcode(0,"M");q.addData(t);q.make();var n=q.getModuleCount(),d="";
+  for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))d+="M"+(c+4)+" "+(r+4)+"h1v1h-1z";
+  return '<svg viewBox="0 0 '+(n+8)+' '+(n+8)+'" shape-rendering="crispEdges" role="img" aria-label="QR de la tarjeta"><rect width="100%" height="100%" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';
+}
+function ready(){
+  if((S.pass||"").length<6){alert("Primero definí la clave del local en Ajustes (mínimo 6 caracteres).");openCfg();return false}
+  if(!S.link){alert("Falta el link de la tarjeta del cliente en Ajustes.");openCfg();return false}
+  return true;
+}
+
+/* QR para el cliente */
+function payload(i){var c=S.cards[i];return {i:i,v:c.v,s:c.s,g:S.goal,t:S.title,r:S.reward,u:S.me||undefined}}
+function showQR(i,msg){
+  mk(payload(i)).then(function(tok){
+    $("qrBox").innerHTML=qrSvg(S.link.replace(/#.*$/,"")+"#"+tok);
+    $("qId").textContent="TARJETA-"+i;$("qMsg").textContent=msg;show("sQR",true);
+  }).catch(function(){alert("No se pudo generar el QR. Revisá la clave del local.")});
+}
+$("qDone").onclick=function(){show("sQR",false);$("qrBox").innerHTML=""};
+function genId(){var a="23456789ABCDEFGHJKMNPQRSTUVWXYZ",s;do{s="";for(var i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)]}while(S.cards[s]);return s}
+$("new").onclick=function(){
+  if(!ready())return;
+  var i=genId(),n=Date.now();S.cards[i]={v:1,s:0,c:n,l:n};S.ops.push({t:n,i:i,k:"a"});save();stats();
+  showQR(i,"Pedile al cliente que escanee este QR con la cámara de su celular. Ahí le queda su tarjeta.");
+};
+
+/* Tarjeta escaneada */
+var cur=null;
+function stars(c){var s="";for(var k=0;k<S.goal;k++)s+=k<Math.min(c.s,S.goal)?"★":"☆";return s}
+function showCard(i){
+  var c=S.cards[i];cur=i;
+  $("cId").textContent="TARJETA-"+i;$("cStars").textContent=stars(c);
+  $("cInfo").textContent=c.s+" de "+S.goal+" sellos"+(c.s>=S.goal?". Premio listo para canjear.":".");
+  $("bOk").style.display=c.s<S.goal?"":"none";$("bRedeem").style.display=c.s>=S.goal?"":"none";
+  show("sCard",true);
+}
+function op(k){
+  var c=S.cards[cur];if(!c)return;
+  if(k==="s")c.s++;else c.s-=S.goal;
+  c.v++;c.l=Date.now();S.ops.push({t:c.l,i:cur,k:k});save();stats();show("sCard",false);
+  showQR(cur,"Listo. Pedile al cliente que escanee este QR para actualizar su tarjeta. Si no lo hace, su tarjeta vieja ya no vale.");
+}
+$("bOk").onclick=function(){op("s")};
+$("bRedeem").onclick=function(){op("c")};
+$("bClose").onclick=function(){cur=null;show("sCard",false)};
+
+/* Escanear */
+var stream=null,scanning=false,vid=$("scVideo");
+var NOCAM="No se pudo abrir la cámara desde esta pantalla. Usá “Leer desde foto” o pegá el código.";
+function scMsg(t){$("scMsg").textContent=t}
+function stopScan(){scanning=false;if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}show("sScan",false)}
+function resume(){if(stream){scanning=true;requestAnimationFrame(tick)}}
+function handle(text){
+  scanning=false;
+  var m=String(text).match(/TS2\.[\w-]+\.[\w-]+/);
+  if(!m){scMsg("Ese código no es de una tarjeta.");resume();return}
+  chk(m[0]).then(function(o){
+    if(!o||!o.i||typeof o.s!=="number"||typeof o.v!=="number")throw 0;
+    var c=S.cards[o.i],n=Date.now();
+    if(c&&o.v<c.v){scMsg("Esta tarjeta es una versión vieja: ya se validó una más nueva. No se acepta.");resume();return}
+    if(!c){S.cards[o.i]={v:o.v,s:o.s,c:n,l:n}}else if(o.v>c.v){c.v=o.v;c.s=o.s}
+    save();stats();stopScan();showCard(o.i);
+  }).catch(function(){scMsg("No pude validar este QR. Puede ser de otro local, estar dañado o no coincidir la clave.");resume()});
+}
+function tick(){
+  if(!scanning)return;
+  if(vid.readyState>=2&&vid.videoWidth){
+    var w=Math.min(640,vid.videoWidth),h=Math.round(vid.videoHeight*w/vid.videoWidth),cv=tick.cv||(tick.cv=document.createElement("canvas"));
+    cv.width=w;cv.height=h;var cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(vid,0,0,w,h);
+    var r=jsQR(cx.getImageData(0,0,w,h).data,w,h);
+    if(r&&r.data){handle(r.data);return}
+  }
+  requestAnimationFrame(tick);
+}
+$("scan").onclick=function(){
+  if(!ready())return;
+  show("sScan",true);scMsg("Abriendo la cámara…");$("scText").value="";
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof jsQR==="undefined"){scMsg(NOCAM);return}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(function(s){
+    stream=s;vid.srcObject=s;vid.play();scanning=true;scMsg("Apuntá la cámara al QR de la tarjeta del cliente.");tick();
+  }).catch(function(){scMsg(NOCAM)});
+};
+$("scClose").onclick=stopScan;
+$("scPhoto").onclick=function(){$("scFile").click()};
+$("scFile").onchange=function(e){
+  var f=e.target.files[0];if(!f)return;var fr=new FileReader();
+  fr.onload=function(){var img=new Image();img.onload=function(){
+    var w=Math.min(1200,img.width),h=Math.round(img.height*w/img.width),cv=document.createElement("canvas");cv.width=w;cv.height=h;
+    var cx=cv.getContext("2d");cx.drawImage(img,0,0,w,h);var r=jsQR(cx.getImageData(0,0,w,h).data,w,h);
+    if(r&&r.data)handle(r.data);else scMsg("No encontré un QR en esa foto.")};img.src=fr.result};
+  fr.readAsDataURL(f);e.target.value="";
+};
+$("scRead").onclick=function(){var t=$("scText").value.trim();if(t)handle(t)};
+
+/* Buscar y recuperar */
+var LAB={a:"Alta",s:"Sello",c:"Premio canjeado",r:"Recuperada"};
+$("find").onclick=function(){$("fId").value="";$("fOut").innerHTML="";show("sFind",true);$("fId").focus()};
+$("fClose").onclick=function(){show("sFind",false)};
+$("fGo").onclick=function(){
+  var id=$("fId").value.toUpperCase().replace(/^TARJETA-?/,"").replace(/[^A-Z0-9]/g,""),c=S.cards[id],out=$("fOut");
+  if(!c){out.innerHTML='<p class="small">No encontré esa tarjeta en este celular.</p>';return}
+  var h=S.ops.filter(function(o){return o.i===id}).slice(-8).reverse().map(function(o){return "<li>"+new Date(o.t).toLocaleDateString("es-ES")+": "+LAB[o.k]+"</li>"}).join("");
+  out.innerHTML='<div class="stars">'+stars(c)+'</div><p class="small">'+c.s+' de '+S.goal+' sellos. Última vez: '+new Date(c.l).toLocaleDateString("es-ES")+'</p><ul class="hist">'+h+'</ul><div class="acts"><button class="primary" id="fRec">Generar QR de recuperación</button></div><p class="small">Para clientes que perdieron el celular. La tarjeta anterior deja de valer.</p>';
+  $("fRec").onclick=function(){
+    if(!ready())return;c.v++;c.l=Date.now();S.ops.push({t:c.l,i:id,k:"r"});save();stats();show("sFind",false);
+    showQR(id,"Tarjeta recuperada. Pedile al cliente que escanee este QR.");
+  };
+};
+
+/* Ajustes */
+function openCfg(){$("gTitle").value=S.title;$("gReward").value=S.reward;$("gGoal").value=S.goal;$("gPass").value=S.pass;$("gLink").value=S.link;$("gMe").value=S.me||"";$("bk").value="";show("sCfg",true)}
+$("cfg").onclick=openCfg;
+$("gCancel").onclick=function(){show("sCfg",false)};
+$("gSave").onclick=function(){
+  var p=$("gPass").value.trim();
+  if(p.length<6){alert("La clave del local necesita al menos 6 caracteres.");return}
+  S.title=$("gTitle").value.trim()||"Tarjeta de sellos";S.reward=$("gReward").value.trim()||"Premio";
+  S.goal=Math.min(30,Math.max(1,parseInt($("gGoal").value,10)||10));S.pass=p;S.link=$("gLink").value.trim();S.me=$("gMe").value.trim().replace(/#.*$/,"");
+  save();stats();show("sCfg",false);
+};
+$("exp").onclick=function(){var t=JSON.stringify(S);$("bk").value=t;$("bk").select();try{navigator.clipboard.writeText(t)}catch(e){}};
+$("imp").onclick=function(){
+  try{var p=JSON.parse($("bk").value);if(!p||typeof p.goal!=="number"||!p.cards||!Array.isArray(p.ops))throw 0;
+    if(confirm("Esto reemplaza todo lo que hay en este celular. ¿Seguir?")){S=Object.assign(S,p);save();stats();show("sCfg",false)}
+  }catch(e){alert("Los datos pegados no son válidos.")}
+};
+function fromHash(){
+  var h=location.hash.replace(/^#/,"");if(!/^TS2\./.test(h))return;
+  if((S.pass||"").length<6){alert("Definí la clave del local en Ajustes y volvé a escanear.");openCfg();return}
+  show("sScan",true);scMsg("Leyendo tarjeta…");handle(h);
+}
+window.addEventListener("hashchange",fromHash);
+stats();
+fromHash();
+})();
+</script>
+</body>
+</html>

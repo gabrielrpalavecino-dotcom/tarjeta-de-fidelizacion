@@ -55,6 +55,7 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
     <div><b id="stW">0</b><span>sellos esta semana</span></div>
     <div><b id="stC">0</b><span>premios canjeados</span></div>
   </div>
+  <p class="small" id="stX" style="margin:-8px 0 14px"></p>
   <button class="primary big" id="new">Nueva tarjeta</button>
   <button class="primary big" id="scan">Escanear tarjeta de un cliente</button>
   <button class="big" id="find">Buscar tarjeta por número</button>
@@ -83,7 +84,8 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
   <h2 id="cId"></h2>
   <div class="stars" id="cStars"></div>
   <p class="small" id="cInfo"></p>
-  <div class="acts"><button class="primary" id="bOk">Validar +1 sello</button><button class="gold" id="bRedeem">Canjear premio</button></div>
+  <div class="acts"><button class="primary" id="bStar">+1 ★ estrella</button><button class="primary" id="bSq">+1 ■ cuadrado</button></div>
+  <div class="acts"><button class="gold" id="bRedeem">Canjear premio</button></div>
   <div class="acts"><button id="bClose">Cerrar</button></div>
 </div></div>
 
@@ -97,7 +99,9 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 <div class="sheet" id="sCfg"><div class="panel">
   <h2>Ajustes</h2>
   <label for="gTitle">Nombre de la tarjeta</label><input id="gTitle">
-  <label for="gReward">Premio</label><input id="gReward">
+  <label for="gReward">Premio normal (sellos mezclados)</label><input id="gReward">
+  <label for="gRS">Sorpresa si todos son estrellas ★</label><input id="gRS">
+  <label for="gRQ">Sorpresa si todos son cuadrados ■</label><input id="gRQ">
   <label for="gGoal">Sellos para ganar el premio</label><input id="gGoal" type="number" min="1" max="30" inputmode="numeric">
   <label for="gPass">Clave del local</label><input id="gPass" autocomplete="off">
   <p class="small">Firma cada tarjeta para que nadie pueda inventar sellos. Tiene que ser la misma en todos los celulares que escaneen. Si la cambiás, las tarjetas anteriores dejan de valer. Mínimo 6 caracteres.</p>
@@ -116,7 +120,7 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 <script>
 (function(){
 var KEY="gestion-tarjetas-v1",DAY=864e5;
-var S={title:"Tarjeta de sellos",reward:"Un pan gratis",goal:10,pass:"",link:"https://claude.ai/artifact/4bRpqKzLxA1DryBTsc1p5s",me:"https://claude.ai/artifact/3ziaj5xB7EWTDiWEDUxjvK",cards:{},ops:[]};
+var S={title:"Tarjeta de sellos",reward:"Un pan gratis",goal:10,pass:"",link:"https://claude.ai/artifact/4bRpqKzLxA1DryBTsc1p5s",me:"https://claude.ai/artifact/3ziaj5xB7EWTDiWEDUxjvK",rs:"Una sorpresa de estrellas",rq:"Una sorpresa de cuadrados",cards:{},ops:[]};
 if(/\.github\.io$/.test(location.hostname)){var base=location.origin+location.pathname;S.me=base;S.link=base.replace(/[^\/]*$/,"")+"tarjeta.html"}
 try{var raw=localStorage.getItem(KEY);if(raw)Object.assign(S,JSON.parse(raw))}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -125,7 +129,7 @@ function show(id,on){$(id).classList[on?"add":"remove"]("open")}
 function stats(){
   var now=Date.now(),ids=Object.keys(S.cards),act=0,ina=0,sel=0,can=0,wk=0;
   ids.forEach(function(i){var c=S.cards[i];if(now-c.l<30*DAY)act++;else if(c.s>0)ina++});
-  S.ops.forEach(function(o){if(o.k==="s"){sel++;if(now-o.t<7*DAY)wk++}else if(o.k==="c")can++});
+  var es=0,cu=0,ps=0,pq=0;S.ops.forEach(function(o){if(o.k==="s"){sel++;if(o.h==="Q")cu++;else es++;if(now-o.t<7*DAY)wk++}else if(o.k==="c"){can++;if(o.p==="S")ps++;else if(o.p==="Q")pq++}});$("stX").textContent="Estrellas dadas: "+es+" · Cuadrados dados: "+cu+" · Sorpresas canjeadas: ★ "+ps+" y ■ "+pq;
   $("title").textContent=S.title;document.title=S.title;$("reward").textContent="Cada "+S.goal+" sellos: "+S.reward;
   $("stE").textContent=ids.length;$("stA").textContent=act;$("stI").textContent=ina;$("stD").textContent=sel;$("stW").textContent=wk;$("stC").textContent=can;
 }
@@ -160,7 +164,7 @@ function ready(){
 /* QR para el cliente */
 function payload(i){var c=S.cards[i];return {i:i,v:c.v,s:c.s,g:S.goal,t:S.title,r:S.reward,u:S.me||undefined}}
 function showQR(i,msg){
-  mk(payload(i)).then(function(tok){
+  var c=S.cards[i],h=hs(c);mk({i:i,v:c.v,s:c.s,h:h}).then(function(q){return mk({i:i,v:c.v,s:c.s,h:h,g:S.goal,t:S.title,r:S.reward,a:S.rs,b:S.rq,u:S.me||undefined,q:q})}).then(function(tok){
     $("qrBox").innerHTML=qrSvg(S.link.replace(/#.*$/,"")+"#"+tok);
     $("qId").textContent="TARJETA-"+i;$("qMsg").textContent=msg;show("sQR",true);
   }).catch(function(){alert("No se pudo generar el QR. Revisá la clave del local.")});
@@ -175,21 +179,23 @@ $("new").onclick=function(){
 
 /* Tarjeta escaneada */
 var cur=null;
-function stars(c){var s="";for(var k=0;k<S.goal;k++)s+=k<Math.min(c.s,S.goal)?"★":"☆";return s}
+function hs(c){return (c.h||"").padEnd(c.s,"N").slice(0,c.s)}
+function prize(c){var h=hs(c);if(/^S+$/.test(h))return{p:"S",n:S.rs};if(/^Q+$/.test(h))return{p:"Q",n:S.rq};return{p:"M",n:S.reward}}
+function stars(c){var h=hs(c),s="";for(var k=0;k<S.goal;k++)s+=k<c.s?(h[k]==="Q"?"■":"★"):"○";return s}
 function showCard(i){
   var c=S.cards[i];cur=i;
   $("cId").textContent="TARJETA-"+i;$("cStars").textContent=stars(c);
-  $("cInfo").textContent=c.s+" de "+S.goal+" sellos"+(c.s>=S.goal?". Premio listo para canjear.":".");
-  $("bOk").style.display=c.s<S.goal?"":"none";$("bRedeem").style.display=c.s>=S.goal?"":"none";
+  var pz=prize(c);$("cInfo").textContent=c.s+" de "+S.goal+" sellos"+(c.s>=S.goal?". Premio listo: "+pz.n+".":".");
+  $("bStar").style.display=$("bSq").style.display=c.s<S.goal?"":"none";$("bRedeem").style.display=c.s>=S.goal?"":"none";$("bRedeem").textContent="Canjear: "+pz.n;
   show("sCard",true);
 }
-function op(k){
-  var c=S.cards[cur];if(!c)return;
-  if(k==="s")c.s++;else c.s-=S.goal;
-  c.v++;c.l=Date.now();S.ops.push({t:c.l,i:cur,k:k});save();stats();show("sCard",false);
+function op(k,sh){
+  var c=S.cards[cur];if(!c)return;var o={i:cur,k:k};
+  if(k==="s"){c.h=hs(c)+sh;c.s++;o.h=sh}else{o.p=prize(c).p;c.h=hs(c).slice(S.goal);c.s-=S.goal}
+  c.v++;c.l=Date.now();o.t=c.l;S.ops.push(o);save();stats();show("sCard",false);
   showQR(cur,"Listo. Pedile al cliente que escanee este QR para actualizar su tarjeta. Si no lo hace, su tarjeta vieja ya no vale.");
 }
-$("bOk").onclick=function(){op("s")};
+$("bStar").onclick=function(){op("s","S")};$("bSq").onclick=function(){op("s","Q")};
 $("bRedeem").onclick=function(){op("c")};
 $("bClose").onclick=function(){cur=null;show("sCard",false)};
 
@@ -207,14 +213,14 @@ function handle(text){
     if(!o||!o.i||typeof o.s!=="number"||typeof o.v!=="number")throw 0;
     var c=S.cards[o.i],n=Date.now();
     if(c&&o.v<c.v){scMsg("Esta tarjeta es una versión vieja: ya se validó una más nueva. No se acepta.");resume();return}
-    if(!c){S.cards[o.i]={v:o.v,s:o.s,c:n,l:n}}else if(o.v>c.v){c.v=o.v;c.s=o.s}
+    if(!c){S.cards[o.i]={v:o.v,s:o.s,h:o.h||"",c:n,l:n}}else if(o.v>c.v){c.v=o.v;c.s=o.s;c.h=o.h||""}
     save();stats();stopScan();showCard(o.i);
   }).catch(function(){scMsg("No pude validar este QR. Puede ser de otro local, estar dañado o no coincidir la clave.");resume()});
 }
 function tick(){
   if(!scanning)return;
   if(vid.readyState>=2&&vid.videoWidth){
-    var w=Math.min(640,vid.videoWidth),h=Math.round(vid.videoHeight*w/vid.videoWidth),cv=tick.cv||(tick.cv=document.createElement("canvas"));
+    var w=Math.min(960,vid.videoWidth),h=Math.round(vid.videoHeight*w/vid.videoWidth),cv=tick.cv||(tick.cv=document.createElement("canvas"));
     cv.width=w;cv.height=h;var cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(vid,0,0,w,h);
     var r=jsQR(cx.getImageData(0,0,w,h).data,w,h);
     if(r&&r.data){handle(r.data);return}
@@ -225,9 +231,9 @@ $("scan").onclick=function(){
   if(!ready())return;
   show("sScan",true);scMsg("Abriendo la cámara…");$("scText").value="";
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof jsQR==="undefined"){scMsg(NOCAM);return}
-  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(function(s){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}}).then(function(s){
     stream=s;vid.srcObject=s;vid.play();scanning=true;scMsg("Apuntá la cámara al QR de la tarjeta del cliente.");tick();
-  }).catch(function(){scMsg(NOCAM)});
+  }).catch(function(e){scMsg("No se pudo abrir la cámara ("+(e&&e.name?e.name:"error")+"). Revisá el permiso de cámara de este sitio en el navegador, o usá “Leer desde foto”.")});
 };
 $("scClose").onclick=stopScan;
 $("scPhoto").onclick=function(){$("scFile").click()};
@@ -257,13 +263,13 @@ $("fGo").onclick=function(){
 };
 
 /* Ajustes */
-function openCfg(){$("gTitle").value=S.title;$("gReward").value=S.reward;$("gGoal").value=S.goal;$("gPass").value=S.pass;$("gLink").value=S.link;$("gMe").value=S.me||"";$("bk").value="";show("sCfg",true)}
+function openCfg(){$("gTitle").value=S.title;$("gReward").value=S.reward;$("gRS").value=S.rs;$("gRQ").value=S.rq;$("gGoal").value=S.goal;$("gPass").value=S.pass;$("gLink").value=S.link;$("gMe").value=S.me||"";$("bk").value="";show("sCfg",true)}
 $("cfg").onclick=openCfg;
 $("gCancel").onclick=function(){show("sCfg",false)};
 $("gSave").onclick=function(){
   var p=$("gPass").value.trim();
   if(p.length<6){alert("La clave del local necesita al menos 6 caracteres.");return}
-  S.title=$("gTitle").value.trim()||"Tarjeta de sellos";S.reward=$("gReward").value.trim()||"Premio";
+  S.title=$("gTitle").value.trim()||"Tarjeta de sellos";S.reward=$("gReward").value.trim()||"Premio";S.rs=$("gRS").value.trim()||"Sorpresa de estrellas";S.rq=$("gRQ").value.trim()||"Sorpresa de cuadrados";
   S.goal=Math.min(30,Math.max(1,parseInt($("gGoal").value,10)||10));S.pass=p;S.link=$("gLink").value.trim();S.me=$("gMe").value.trim().replace(/#.*$/,"");
   save();stats();show("sCfg",false);
 };

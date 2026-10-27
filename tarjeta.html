@@ -23,6 +23,7 @@ main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
 .st.on{border:4px solid var(--navy);border-style:solid;color:var(--navy);font-size:22px;transform:rotate(-6deg)}
 .st.on:nth-child(3n){transform:rotate(5deg)}
 .card.ready .st.on{border-color:var(--gold);color:var(--gold)}
+.st.sq{border-radius:14px}
 .st.pop{animation:pop .5s ease-out}
 @keyframes pop{0%{transform:scale(2) rotate(-20deg);opacity:0}100%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.st.pop{animation:none}}
@@ -71,15 +72,16 @@ if(!saved||!saved.o){
   return;
 }
 var c=saved.o,g=c.g,cols=Math.min(g,g<=10?5:g<=18?6:8),ready=c.s>=g,cur=Math.min(c.s,g),cells="";
-for(var i=0;i<g;i++)cells+='<div class="st'+(i<cur?" on":"")+(fresh&&i===cur-1?" pop":"")+'">'+(i<cur?"★":(i+1))+'</div>';
+var hh=(c.h||"").padEnd(c.s,"N").slice(0,c.s),pz=/^S+$/.test(hh)?c.a:/^Q+$/.test(hh)?c.b:c.r;
+for(var i=0;i<g;i++)cells+='<div class="st'+(i<cur?" on":"")+(hh[i]==="Q"?" sq":"")+(fresh&&i===cur-1?" pop":"")+'">'+(i<cur?(hh[i]==="Q"?"■":"★"):(i+1))+'</div>';
 var left=g-c.s;
 app.innerHTML=(note?'<p class="note">'+esc(note)+'</p>':'')
  +'<section class="card'+(ready?" ready":"")+'"><header>'+esc(c.t||"Tarjeta de sellos")+'</header><div class="body">'
  +'<div class="code">TARJETA-'+esc(c.i)+'</div>'
  +'<div class="grid" style="grid-template-columns:repeat('+cols+',1fr)">'+cells+'</div>'
- +'<p class="msg">'+(ready?"¡Premio listo! Mostrala en el local":"Te faltan "+left+(left===1?" sello":" sellos"))+'</p>'
- +'<p class="rw">Premio: '+esc(c.r||"")+'</p></div></section>'
- +'<div class="qr">'+qrSvg(c.u?c.u.replace(/#.*$/,"")+"#"+saved.tok:saved.tok)+'</div>'
+ +'<p class="msg">'+(ready?"¡Premio listo: "+esc(pz||c.r||"")+"! Mostrala en el local":"Te faltan "+left+(left===1?" sello":" sellos"))+'</p>'
+ +'<p class="rw">'+(c.a?"★ Todas estrellas: "+esc(c.a)+"<br>":"")+(c.b?"■ Todos cuadrados: "+esc(c.b)+"<br>":"")+"Mezclados: "+esc(c.r||"")+'</p></div></section>'
+ +'<div class="qr">'+qrSvg((c.u?c.u.replace(/#.*$/,"")+"#":"")+(c.q||saved.tok))+'</div>'
  +'<p class="small">Mostrale este QR al local cada vez que vengas. Hacé una captura de pantalla: si perdés el celular, el local puede recuperar tu tarjeta con este número.</p>';
 })();
 </script>

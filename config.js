@@ -1,6 +1,6 @@
-// Editá SOLO estas 3 líneas (entre las comillas) y subí este archivo junto con los otros.
+// Listo para subir: reemplaza el config.js que está en tu repo.
 window.CFG={
-  URL:"https://TU-PROYECTO.supabase.co",
-  KEY:"TU-CLAVE-PUBLICA-ANON",
-  TARJETA:"https://TUUSUARIO.github.io/TUREPO/tarjeta.html"
+  URL:"https://dculigjdfdqxesobpkdn.supabase.co",
+  KEY:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWxpZ2pkZmRxeGVzb2Jwa2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNjk2NzYsImV4cCI6MjEwODc0NTY3Nn0.UGbYM8KTpYYI_21ngLpQSj4OCQt5atLmneYZZZijhAw",
+  TARJETA:"https://gabrielrpalavecino-dotcom.github.io/tarjeta-de-fidelizacion/tarjeta.html"
 };

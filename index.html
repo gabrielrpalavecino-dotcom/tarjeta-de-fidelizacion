@@ -12481,7 +12481,8 @@ function showCard(){
   const c=cur,full=c.stamps.length>=cfg.goal;
   sheet(`<h2>${H(c.id)}</h2><div class=stars>${c.stamps.map(x=>x=='s'?'★':'■').join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
   (full?`<p><b>🎁 ${H(prize(c.stamps))}</b></p><div class=acts><button class=gold onclick=redeem()>Canjear premio</button></div>`
-  :`<div class=acts><button class=primary onclick="stamp('s')">★ Estrella</button><button class=primary onclick="stamp('q')">■ Cuadrado</button></div>`)+`<div class=acts><button onclick=closeS()>Cerrar</button></div>`)}
+  :`<div class=acts><button class=primary onclick="stamp('s')">★ Estrella</button><button class=primary onclick="stamp('q')">■ Cuadrado</button></div>`)+`<div class=acts><button onclick=verQR()>Mostrar QR para el cliente</button><button onclick=closeS()>Cerrar</button></div>`)}
+function verQR(){const l=C.TARJETA+'#'+cur.id;sheet(`<h2>${H(cur.id)}</h2><div class=qrb>${qr(l)}</div><p class=small style="text-align:center">Que el cliente lo escanee con su cámara.</p><div class=acts><button onclick=showCard()>Volver</button></div>`)}
 async function patch(b){try{const r=await api('/rest/v1/cards?id=eq.'+cur.id,{method:'PATCH',body:JSON.stringify({...b,updated_at:new Date().toISOString()})});cur=r[0];await load();render();showCard()}catch(e){err(e)}}
 const stamp=t=>patch({stamps:[...cur.stamps,t],total_stamps:cur.total_stamps+1});
 const redeem=()=>patch({stamps:[],prizes:cur.prizes+1});

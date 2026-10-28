@@ -2335,6 +2335,7 @@ const kind=a=>a.every(x=>x=='s')?'s':a.every(x=>x=='q')?'q':'n';
 const qr=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true})};
 let id=(location.hash.slice(1)||localStorage.getItem('tid')||'').trim().toUpperCase(),last=-1;
 if(location.hash.slice(1))localStorage.setItem('tid',id);
+if(id&&location.hash.slice(1).toUpperCase()!==id)history.replaceState(null,'','#'+id);
 addEventListener('hashchange',()=>{const h=location.hash.slice(1).trim().toUpperCase();if(h){id=h;localStorage.setItem('tid',id);last=-1;load()}});
 async function load(){
   if(!id){$('#app').innerHTML='<p class=note>Escaneá el QR del local para tener tu tarjeta.</p>';return}
@@ -2343,12 +2344,13 @@ async function load(){
     const d=await r.json();
     if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta.</p>';else draw(d)
   }catch(e){if($('#t'))$('#t').textContent='Sin conexión, reintentando…'}}
+function tip(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),app=matchMedia('(display-mode: standalone)').matches||navigator.standalone;return app?'':`<div class=note><b>Guardá tu tarjeta en el celular</b><br>${ios?'Tocá el botón Compartir y elegí «Agregar a pantalla de inicio».':'Tocá el menú ⋮ del navegador y elegí «Agregar a pantalla de inicio».'} Así la abrís como una app y siempre ves tus sellos.</div>`}
 function draw(d){
   const cf={...DEF,...(d.config||{})},st=d.stamps||[],full=st.length>=cf.goal,k=kind(st),pz=full?(k=='s'?cf.prizeS:k=='q'?cf.prizeQ:cf.prize):cf.prize;
   let cells='';for(let i=0;i<cf.goal;i++){const t=st[i];cells+=`<div class="st${t?' on':''}${t=='q'?' sq':''}${t&&last>=0&&i>=last?' pop':''}">${t=='s'?'★':t=='q'?'■':i+1}</div>`}
   last=st.length;
   $('#app').innerHTML=`<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
-  <div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Mostrá este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><p class=small><button onclick=load()>Actualizar</button></p>`}
+  <div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Mostrá este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p>${tip()}<p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><p class=small><button onclick=load()>Actualizar</button></p>`}
 load();setInterval(()=>{if(!document.hidden)load()},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 </script></body></html>

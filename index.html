@@ -37,7 +37,7 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 .stars{font-size:30px;letter-spacing:.1em;margin:6px 0;word-break:break-all}
 .hist{font-size:14px;color:var(--mute);margin:8px 0 0;padding-left:18px}
 </style>
-<style>main input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}.acts input{flex:2}.acts button{flex:1}</style></head><body><main id=app></main><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script>
+<style>main input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}.acts input{flex:2}.acts button{flex:1}main select,.panel select{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:10px 12px;min-height:44px}</style></head><body><main id=app></main><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -12440,56 +12440,84 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 /******/ ])["default"];
 });
 </script><script>
-const C=window.CFG,$=s=>document.querySelector(s),H=t=>String(t).replace(/[&<>"]/g,c=>'&#'+c.charCodeAt(0)+';');
-const DEF={title:'Tarjeta de sellos',goal:10,prize:'Un premio',prizeS:'Premio sorpresa ★',prizeQ:'Premio sorpresa ■'};
-let S=JSON.parse(localStorage.getItem('sb-ses')||'null'),cfg={...DEF},cards=[],cur=null,stream=null,raf=0;
+const C=window.CFG,$=s=>document.querySelector(s),H=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),J=JSON.stringify;
+const DEF={goal:10,prize:'Un premio',prizeS:'Premio sorpresa',prizeQ:'Premio sorpresa'};
+let S=JSON.parse(localStorage.getItem('sb-ses')||'null'),me=null,shops=[],brs=[],cards=[],logs=[],sid='',cfg={...DEF},cur=null,stream=null,raf=0;
+const th=()=>THEMES[cfg.theme]||THEMES.clasico,G=x=>x=='s'?th().a:th().b;
 const kind=a=>a.every(x=>x=='s')?'s':a.every(x=>x=='q')?'q':'n';
 const prize=a=>({s:cfg.prizeS,q:cfg.prizeQ,n:cfg.prize})[kind(a)];
 const qr=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true})};
-async function auth(b,g){const r=await fetch(C.URL+'/auth/v1/token?grant_type='+g,{method:'POST',headers:{apikey:C.KEY,'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error_description||j.msg||'Error');S={token:j.access_token,ref:j.refresh_token,exp:j.expires_at};localStorage.setItem('sb-ses',JSON.stringify(S))}
-function logout(){S=null;localStorage.removeItem('sb-ses');closeS();render()}
+const uid=()=>JSON.parse(atob(S.token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub;
+const shr=l=>`<div class=acts><button onclick="navigator.clipboard.writeText('${l}');this.textContent='¡Copiado!'">Copiar link</button><button onclick="window.open('https://wa.me/?text=${encodeURIComponent('Tu tarjeta de sellos: '+l)}')">WhatsApp</button></div>`;
+async function auth(b,g){const r=await fetch(C.URL+'/auth/v1/token?grant_type='+g,{method:'POST',headers:{apikey:C.KEY,'Content-Type':'application/json'},body:J(b)});const j=await r.json();if(!r.ok)throw new Error(j.error_description||j.msg||'Error');S={token:j.access_token,ref:j.refresh_token,exp:j.expires_at};localStorage.setItem('sb-ses',J(S))}
+function logout(){S=null;me=null;localStorage.removeItem('sb-ses');closeS();render()}
 async function api(p,o={}){
   if(S&&S.exp<Date.now()/1e3+60)await auth({refresh_token:S.ref},'refresh_token').catch(logout);
   const r=await fetch(C.URL+p,{...o,headers:{apikey:C.KEY,Authorization:'Bearer '+(S?S.token:C.KEY),'Content-Type':'application/json',Prefer:'return=representation',...(o.headers||{})}});
   if(r.status==401){logout();throw new Error('Sesión vencida')}
   if(!r.ok)throw new Error(await r.text());
   return r.json()}
-async function load(){cards=await api('/rest/v1/cards?select=*&order=updated_at.desc');const c=await api('/rest/v1/config?id=eq.1');cfg={...DEF,...((c[0]||{}).data||{})}}
+async function load(){
+  me=(await api('/rest/v1/staff?user_id=eq.'+uid()))[0];if(!me)return;
+  shops=await api('/rest/v1/shops?select=*&order=name');
+  sid=me.is_admin&&shops.some(s=>s.id==localStorage.sid)?localStorage.sid:me.shop_id;
+  const sh=shops.find(s=>s.id==sid)||shops[0];sid=sh.id;
+  cfg={...DEF,...sh.data,title:sh.name,goal:sh.goal,theme:sh.theme};
+  brs=await api('/rest/v1/branches?shop_id=eq.'+sid+'&select=*&order=id');
+  cards=await api('/rest/v1/cards?select=*&order=updated_at.desc');
+  logs=await api('/rest/v1/log?shop_id=eq.'+sid+'&select=branch,kind&limit=10000')}
 function sheet(h){$('#pn').innerHTML=h;$('#sh').classList.add('open')}
 function stop(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;cancelAnimationFrame(raf)}
 function closeS(){stop();$('#sh').classList.remove('open')}
 const err=e=>alert(e.message||e);
+const mine=()=>cards.filter(c=>c.shop_id==sid);
+const suc=()=>{const n=localStorage.suc;return brs.some(b=>b.name==n)?n:(brs[0]||{}).name||''};
 function render(){
   if(!S){$('#app').innerHTML=`<h1>Gestión</h1><p class=sub>Ingresá con tu usuario</p><label>Email</label><input id=em type=email autocomplete=username><label>Contraseña</label><input id=pw type=password autocomplete=current-password><p><button class="big primary" onclick=login()>Entrar</button></p>`;return}
-  const n=Date.now(),s=[['Tarjetas',cards.length],['Activas 30 días',cards.filter(c=>n-new Date(c.updated_at)<2592e6).length],['Sellos dados',cards.reduce((a,c)=>a+c.total_stamps,0)],['Premios canjeados',cards.reduce((a,c)=>a+c.prizes,0)],['Premios por canjear',cards.filter(c=>c.stamps.length>=cfg.goal).length]];
-  $('#app').innerHTML=`<div class=top><div><h1>${H(cfg.title)}</h1><p class=sub>Gestión</p></div><button onclick=ajustes()>Ajustes</button></div>
+  if(!me){$('#app').innerHTML='<h1>Sin comercio</h1><p class=sub>Tu usuario todavía no tiene un comercio asignado. Pedíselo al administrador.</p><button onclick=logout()>Salir</button>';return}
+  const L=mine(),n=Date.now(),s=[['Tarjetas',L.length],['Activas 30 días',L.filter(c=>n-new Date(c.updated_at)<2592e6).length],['Sellos dados',L.reduce((a,c)=>a+c.total_stamps,0)],['Premios canjeados',L.reduce((a,c)=>a+c.prizes,0)],['Por canjear',L.filter(c=>c.stamps.length>=cfg.goal).length]];
+  const adm=me.is_admin?`<label>Comercio</label><select onchange="localStorage.sid=this.value;init()">${shops.map(x=>`<option value="${x.id}" ${x.id==sid?'selected':''}>${H(x.name)}</option>`).join('')}</select><div class=small style="text-align:left">${shops.map(x=>{const K=cards.filter(c=>c.shop_id==x.id);return `<b>${H(x.name)}</b>: ${K.length} tarjetas · ${K.reduce((a,c)=>a+c.total_stamps,0)} sellos · ${K.reduce((a,c)=>a+c.prizes,0)} premios`}).join('<br>')}</div>`:'';
+  $('#app').innerHTML=`<div class=top><div><h1>${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div><button onclick=ajustes()>Ajustes</button></div>${adm}
   <div class=stats>${s.map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
+  <p class=small style="text-align:left">${brs.map(b=>H(b.name)+': '+logs.filter(l=>l.branch==b.name&&l.kind!='redeem').length+' sellos').join(' · ')}</p>
   <button class="big primary" onclick=scan()>Escanear tarjeta de un cliente</button>
   <button class=big onclick=nueva()>Nueva tarjeta</button>
   <label>O escribí el código</label><div class=acts><input id=cod><button onclick="openCard($('#cod').value)">Abrir</button></div>`}
 async function login(){try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');await init()}catch(e){err(e)}}
 async function init(){try{await load()}catch(e){err(e)}render()}
+function elegirSuc(){sheet(`<h2>Sucursal</h2><div class=acts style="flex-direction:column">${brs.map(b=>`<button onclick="localStorage.suc='${H(b.name)}';closeS();render()">${H(b.name)}</button>`).join('')}</div>`)}
 async function nueva(){
-  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=[...b].map(x=>A[x%A.length]).join('');
-  try{await api('/rest/v1/cards',{method:'POST',body:JSON.stringify({id})});await load();render()}catch(e){return err(e)}
-  const link=C.TARJETA+'#'+id;
-  sheet(`<h2>Tarjeta nueva</h2><p class=small>Que el cliente escanee este QR con su cámara. Se abre su tarjeta.</p><div class=qrb>${qr(link)}</div><p class=small style="text-align:center"><b>${id}</b></p><div class=acts><button onclick="navigator.clipboard.writeText('${link}');this.textContent='¡Copiado!'">Copiar link</button><button onclick=closeS()>Listo</button></div>`)}
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=[...b].map(x=>A[x%A.length]).join(''),link=C.TARJETA+'#'+id;
+  try{await api('/rest/v1/cards',{method:'POST',body:J({id,shop_id:sid})});await load();render()}catch(e){return err(e)}
+  sheet(`<h2>Tarjeta nueva</h2><p class=small>Que el cliente escanee el QR, o mandale el link.</p><div class=qrb>${qr(link)}</div><p class=small style="text-align:center"><b>${id}</b></p>${shr(link)}<div class=acts><button onclick=closeS()>Listo</button></div>`)}
 async function openCard(id){
   id=(id||'').trim().toUpperCase();if(!id)return;
-  try{const r=await api('/rest/v1/cards?id=eq.'+encodeURIComponent(id));if(!r.length)return alert('No existe la tarjeta '+id);cur=r[0];showCard()}catch(e){err(e)}}
+  try{const r=await api('/rest/v1/cards?id=eq.'+encodeURIComponent(id));if(!r.length)return alert('No existe la tarjeta '+id);
+  if(r[0].shop_id!=sid){localStorage.sid=r[0].shop_id;await load();render()}
+  cur=r[0];showCard()}catch(e){err(e)}}
 function showCard(){
   const c=cur,full=c.stamps.length>=cfg.goal;
-  sheet(`<h2>${H(c.id)}</h2><div class=stars>${c.stamps.map(x=>x=='s'?'★':'■').join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
+  sheet(`<h2>${H(c.id)}</h2><div class=stars>${c.stamps.map(G).join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
   (full?`<p><b>🎁 ${H(prize(c.stamps))}</b></p><div class=acts><button class=gold onclick=redeem()>Canjear premio</button></div>`
-  :`<div class=acts><button class=primary onclick="stamp('s')">★ Estrella</button><button class=primary onclick="stamp('q')">■ Cuadrado</button></div>`)+`<div class=acts><button onclick=verQR()>Mostrar QR para el cliente</button><button onclick=closeS()>Cerrar</button></div>`)}
-function verQR(){const l=C.TARJETA+'#'+cur.id;sheet(`<h2>${H(cur.id)}</h2><div class=qrb>${qr(l)}</div><p class=small style="text-align:center">Que el cliente lo escanee con su cámara.</p><div class=acts><button onclick=showCard()>Volver</button></div>`)}
-async function patch(b){try{const r=await api('/rest/v1/cards?id=eq.'+cur.id,{method:'PATCH',body:JSON.stringify({...b,updated_at:new Date().toISOString()})});cur=r[0];await load();render();showCard()}catch(e){err(e)}}
-const stamp=t=>patch({stamps:[...cur.stamps,t],total_stamps:cur.total_stamps+1});
-const redeem=()=>patch({stamps:[],prizes:cur.prizes+1});
+  :`<div class=acts><button class=primary onclick="stamp('s')">${th().a} Sello A</button><button class=primary onclick="stamp('q')">${th().b} Sello B</button></div>`)+`<div class=acts><button onclick=verQR()>Link / QR del cliente</button><button onclick=closeS()>Cerrar</button></div>`)}
+function verQR(){const l=C.TARJETA+'#'+cur.id;sheet(`<h2>${H(cur.id)}</h2><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
+async function patch(b,k){try{const r=await api('/rest/v1/cards?id=eq.'+cur.id,{method:'PATCH',body:J({...b,updated_at:new Date().toISOString()})});cur=r[0];await api('/rest/v1/log',{method:'POST',body:J({card_id:cur.id,shop_id:cur.shop_id,branch:suc(),kind:k})});await load();render();showCard()}catch(e){err(e)}}
+const stamp=t=>patch({stamps:[...cur.stamps,t],total_stamps:cur.total_stamps+1},t);
+const redeem=()=>patch({stamps:[],prizes:cur.prizes+1},'redeem');
 function ajustes(){
-  sheet(`<h2>Ajustes</h2><label>Título</label><input id=a1 value="${H(cfg.title)}"><label>Sellos para el premio</label><input id=a2 type=number min=1 max=30 value="${cfg.goal}"><label>Premio normal</label><input id=a3 value="${H(cfg.prize)}"><label>Sorpresa: todas ★</label><input id=a4 value="${H(cfg.prizeS)}"><label>Sorpresa: todos ■</label><input id=a5 value="${H(cfg.prizeQ)}">
-  <div class=acts><button class=primary onclick=saveCfg()>Guardar</button><button onclick=closeS()>Cerrar</button></div><div class=acts><button onclick=logout()>Salir de la sesión</button></div>`)}
-async function saveCfg(){try{const d={title:$('#a1').value,goal:Math.max(1,+$('#a2').value||10),prize:$('#a3').value,prizeS:$('#a4').value,prizeQ:$('#a5').value};await api('/rest/v1/config?id=eq.1',{method:'PATCH',body:JSON.stringify({data:d})});await load();render();closeS()}catch(e){err(e)}}
+  const s=shops.find(x=>x.id==sid);
+  sheet(`<h2>Ajustes · ${H(s.name)}</h2><label>Nombre</label><input id=a1 value="${H(s.name)}"><label>Estética</label><select id=a6>${Object.entries(THEMES).map(([k,t])=>`<option value="${k}" ${k==s.theme?'selected':''}>${t.n}</option>`).join('')}</select><label>Sellos para el premio</label><input id=a2 type=number min=1 max=30 value="${s.goal}"><label>Premio normal</label><input id=a3 value="${H(cfg.prize)}"><label>Sorpresa: todos ${th().a}</label><input id=a4 value="${H(cfg.prizeS)}"><label>Sorpresa: todos ${th().b}</label><input id=a5 value="${H(cfg.prizeQ)}">
+  <div class=acts><button class=primary onclick=saveCfg()>Guardar</button></div>
+  <label>Sucursales: ${brs.map(b=>H(b.name)).join(', ')}</label><div class=acts><input id=nb placeholder="Nueva sucursal"><button onclick=addBr()>Agregar</button></div>`+
+  (me.is_admin?`<label>Nuevo comercio</label><div class=acts><input id=ns placeholder="Nombre"><button onclick=addShop()>Crear</button></div><label>Acceso del local (cada local entra con su propio email y clave)</label><div id=lst class=small style="text-align:left"></div><input id=em2 type=email placeholder="email del local"><input id=pw2 type=text placeholder="clave (mínimo 8 caracteres)" style="margin-top:8px"><div class=acts><button class=primary onclick=crear()>Crear / cambiar acceso</button></div>`:'')+
+  `<div class=acts><button onclick=closeS()>Cerrar</button><button onclick=logout()>Salir</button></div>`);if(me.is_admin)listAcc()}
+const act=async f=>{try{await f();await load();render();closeS()}catch(e){err(e)}};
+const saveCfg=()=>act(()=>api('/rest/v1/shops?id=eq.'+sid,{method:'PATCH',body:J({name:$('#a1').value,theme:$('#a6').value,goal:Math.max(1,+$('#a2').value||10),data:{prize:$('#a3').value,prizeS:$('#a4').value,prizeQ:$('#a5').value}})}));
+const addBr=()=>$('#nb').value.trim()&&act(()=>api('/rest/v1/branches',{method:'POST',body:J({shop_id:sid,name:$('#nb').value.trim()})}));
+const addShop=()=>{const n=$('#ns').value.trim(),id=n.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'');if(!id)return;act(async()=>{await api('/rest/v1/shops',{method:'POST',body:J({id,name:n})});await api('/rest/v1/branches',{method:'POST',body:J({shop_id:id,name:'Principal'})});localStorage.sid=id})};
+async function listAcc(){try{const r=await api('/rest/v1/rpc/list_staff',{method:'POST',body:'{}'}),e=$('#lst');if(e)e.innerHTML=r.filter(x=>x.shop_id==sid).map(x=>H(x.email)+(x.is_admin?' (admin)':` <button onclick="quitar('${H(x.email)}')">✕</button>`)).join('<br>')||'Sin accesos todavía'}catch(e){}}
+async function crear(){try{alert(await api('/rest/v1/rpc/create_staff',{method:'POST',body:J({p_email:$('#em2').value,p_password:$('#pw2').value,p_shop:sid})}));$('#pw2').value='';listAcc()}catch(e){err(e)}}
+async function quitar(m){if(!confirm('¿Quitar el acceso de '+m+'?'))return;try{await api('/rest/v1/rpc/remove_staff',{method:'POST',body:J({p_email:m})});listAcc()}catch(e){err(e)}}
 function found(t){stop();openCard(t.includes('#')?t.split('#').pop():t)}
 async function scan(){
   sheet(`<h2>Escaneá la tarjeta</h2><video id=v playsinline muted autoplay style="width:100%;min-height:220px;border-radius:12px;background:#000"></video><p class=small id=dg></p><label class="big primary" style="display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;margin:0 0 10px;color:#fff">📷 Sacar foto al QR<input type=file accept="image/*" capture=environment hidden id=ph></label><div class=acts><button onclick=closeS()>Cerrar</button></div>`);

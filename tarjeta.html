@@ -9,7 +9,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);line-height:1.4}
 main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
 .card{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 10px 30px rgba(20,40,70,.22)}
-.card header{background:var(--sky);color:#0d3556;padding:18px 20px;font-size:24px;font-weight:800}
+.card header{background:var(--sky);color:var(--hd,#0d3556);padding:18px 20px;font-size:24px;font-weight:800}
 .body{padding:16px 20px 20px}
 .code{font-weight:800;font-size:20px;letter-spacing:.04em}
 .grid{display:grid;gap:10px;margin:16px 0}
@@ -29,7 +29,7 @@ main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
 .small{color:var(--mute);font-size:14px;text-align:center;margin:12px 4px 0}
 .note{background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:14px;color:var(--ink)}
 </style>
-<style>.small button{min-height:44px;padding:8px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}</style></head><body><main id=app></main><script src="config.js"></script><script>
+<style>.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.small button.add{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.22)}.small button{min-height:44px;padding:8px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}</style></head><body><main id=app></main><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -2338,19 +2338,32 @@ if(location.hash.slice(1))localStorage.setItem('tid',id);
 if(id&&location.hash.slice(1).toUpperCase()!==id)history.replaceState(null,'','#'+id);
 addEventListener('hashchange',()=>{const h=location.hash.slice(1).trim().toUpperCase();if(h){id=h;localStorage.setItem('tid',id);last=-1;load()}});
 async function load(){
-  if(!id){$('#app').innerHTML='<p class=note>Escaneá el QR del local para tener tu tarjeta.</p>';return}
+  if(!id){$('#app').innerHTML='<p class=note>Escanea el QR del local para tener tu tarjeta.</p>';return}
   try{
     const r=await fetch(C.URL+'/rest/v1/rpc/get_card',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:id})});
     const d=await r.json();
     if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta.</p>';else draw(d)
   }catch(e){if($('#t'))$('#t').textContent='Sin conexión, reintentando…'}}
-function tip(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),app=matchMedia('(display-mode: standalone)').matches||navigator.standalone;return app?'':`<div class=note><b>Guardá tu tarjeta en el celular</b><br>${ios?'Tocá el botón Compartir y elegí «Agregar a pantalla de inicio».':'Tocá el menú ⋮ del navegador y elegí «Agregar a pantalla de inicio».'} Así la abrís como una app y siempre ves tus sellos.</div>`}
-function draw(d){
+let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
+const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+function icon(z,th){const c=document.createElement('canvas');c.width=c.height=z;const x=c.getContext('2d');x.fillStyle=th.sky||'#5aa7d8';x.fillRect(0,0,z,z);x.font=Math.round(z*.58)+'px serif';x.textAlign='center';x.textBaseline='middle';x.fillText(th.a,z/2,z*.54);return c.toDataURL('image/png')}
+function pwa(cf,th){
+  const k=cf.title+id;if(pwa.k===k)return;pwa.k=k;
+  const i1=icon(192,th),i2=icon(512,th),mk=(r,h)=>{let l=document.querySelector('link[rel="'+r+'"]');if(!l){l=document.createElement('link');l.rel=r;document.head.appendChild(l)}l.href=h};
+  mk('apple-touch-icon',i1);
+  mk('manifest',URL.createObjectURL(new Blob([JSON.stringify({name:cf.title,short_name:String(cf.title).slice(0,12),start_url:location.origin+location.pathname+'#'+id,scope:location.origin+location.pathname.replace(/[^/]*$/,''),display:'standalone',background_color:th.bg||'#f4f7fb',theme_color:th.sky||'#5aa7d8',icons:[{src:i1,sizes:'192x192',type:'image/png'},{src:i2,sizes:'512x512',type:'image/png'}]})],{type:'application/manifest+json'})))}
+async function addHome(){
+  if(dip){dip.prompt();await dip.userChoice;dip=null;return}
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),inapp=/FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(navigator.userAgent),o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:9';o.onclick=()=>o.remove();
+  o.innerHTML=`<div style="background:#fff;color:#222;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-width:480px;width:100%;box-sizing:border-box"><h3 style="margin:0 0 10px">📲 Añadir a la pantalla de inicio</h3>${inapp?'<p><b>Abre este enlace en Safari o Chrome</b> para poder añadirla.</p>':ios?'<p>1. Toca el botón <b>Compartir</b> (el cuadrado con la flecha ↑).<br>2. Elige <b>Añadir a pantalla de inicio</b>.<br>3. Toca <b>Añadir</b>.</p>':'<p>1. Toca el menú <b>⋮</b> del navegador.<br>2. Elige <b>Añadir a pantalla de inicio</b> (o <b>Instalar app</b>).<br>3. Confirma.</p>'}<p style="color:#777;font-size:14px;margin:8px 0 0">Así abres tu tarjeta como una app y siempre ves tus sellos al día. (Toca fuera para cerrar)</p></div>`;
+  document.body.appendChild(o)}
+function draw(d){applyTheme((d.config||{}).theme);const th=THEMES[(d.config||{}).theme]||THEMES.clasico;
   const cf={...DEF,...(d.config||{})},st=d.stamps||[],full=st.length>=cf.goal,k=kind(st),pz=full?(k=='s'?cf.prizeS:k=='q'?cf.prizeQ:cf.prize):cf.prize;
-  let cells='';for(let i=0;i<cf.goal;i++){const t=st[i];cells+=`<div class="st${t?' on':''}${t=='q'?' sq':''}${t&&last>=0&&i>=last?' pop':''}">${t=='s'?'★':t=='q'?'■':i+1}</div>`}
-  last=st.length;
+  let cells='';for(let i=0;i<cf.goal;i++){const t=st[i];cells+=`<div class="st${t?' on':''}${t=='q'?' sq':''}${t&&last>=0&&i>=last?' pop':''}">${t=='s'?th.a:t=='q'?th.b:i+1}</div>`}
+  last=st.length;document.title=cf.title;pwa(cf,th);
   $('#app').innerHTML=`<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
-  <div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Mostrá este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p>${tip()}<p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><p class=small><button onclick=load()>Actualizar</button></p>`}
+  <div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Muestra este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><div class="small row"><button onclick=load()>↻ Actualizar</button>${isApp()?'':'<button class=add onclick=addHome()>📲 Añadir a inicio</button>'}</div>`}
 load();setInterval(()=>{if(!document.hidden)load()},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 </script></body></html>

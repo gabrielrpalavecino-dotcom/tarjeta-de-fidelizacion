@@ -36,6 +36,7 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 .qrb svg{display:block;width:100%;height:auto}
 .stars{font-size:30px;letter-spacing:.1em;margin:6px 0;word-break:break-all}
 .hist{font-size:14px;color:var(--mute);margin:8px 0 0;padding-left:18px}
+body{border-top:8px solid var(--sky)}.top h1,.stats b{color:var(--sky-ink)}
 </style>
 <style>main input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}.acts input{flex:2}.acts button{flex:1}main select,.panel select{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:10px 12px;min-height:44px}</style></head><body><main id=app></main><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
@@ -12472,12 +12473,17 @@ function closeS(){stop();$('#sh').classList.remove('open')}
 const err=e=>alert(e.message||e);
 const mine=()=>cards.filter(c=>c.shop_id==sid);
 const suc=()=>{const n=localStorage.suc;return brs.some(b=>b.name==n)?n:(brs[0]||{}).name||''};
+function applyStaff(k){const t=THEMES[k]||THEMES.clasico,r=document.documentElement,st=r.style,on=k&&t.bg,set=(p,v)=>v?st.setProperty(p,v):st.removeProperty(p);
+  set('--bg',on&&t.bg);set('--surface',on&&'#fff');set('--ink',on&&t.ink);set('--mute',on&&t.mute);set('--line',on&&t.line);set('--sky',on&&t.sky);set('--sky-ink',on&&t.navy);set('--gold',on&&t.gold);
+  on?r.setAttribute('data-theme','light'):r.removeAttribute('data-theme');
+  let m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m)}m.content=on?t.sky:'#0f1824'}
 function render(){
+  const ok=!!(S&&me);applyStaff(ok?cfg.theme:null);document.title=(ok?cfg.title+' · ':'')+'Gestión';
   if(!S){$('#app').innerHTML=`<h1>Gestión</h1><p class=sub>Ingresá con tu usuario</p><label>Email</label><input id=em type=email autocomplete=username><label>Contraseña</label><input id=pw type=password autocomplete=current-password><p><button class="big primary" onclick=login()>Entrar</button></p>`;return}
   if(!me){$('#app').innerHTML='<h1>Sin comercio</h1><p class=sub>Tu usuario todavía no tiene un comercio asignado. Pedíselo al administrador.</p><button onclick=logout()>Salir</button>';return}
   const L=mine(),n=Date.now(),s=[['Tarjetas',L.length],['Activas 30 días',L.filter(c=>n-new Date(c.updated_at)<2592e6).length],['Sellos dados',L.reduce((a,c)=>a+c.total_stamps,0)],['Premios canjeados',L.reduce((a,c)=>a+c.prizes,0)],['Por canjear',L.filter(c=>c.stamps.length>=cfg.goal).length]];
   const adm=me.is_admin?`<label>Comercio</label><select onchange="localStorage.sid=this.value;init()">${shops.map(x=>`<option value="${x.id}" ${x.id==sid?'selected':''}>${H(x.name)}</option>`).join('')}</select><div class=small style="text-align:left">${shops.map(x=>{const K=cards.filter(c=>c.shop_id==x.id);return `<b>${H(x.name)}</b>: ${K.length} tarjetas · ${K.reduce((a,c)=>a+c.total_stamps,0)} sellos · ${K.reduce((a,c)=>a+c.prizes,0)} premios`}).join('<br>')}</div>`:'';
-  $('#app').innerHTML=`<div class=top><div><h1>${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div><button onclick=ajustes()>Ajustes</button></div>${adm}
+  $('#app').innerHTML=`<div class=top><div><h1>${th().a} ${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div><button onclick=ajustes()>Ajustes</button></div>${adm}
   <div class=stats>${s.map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
   <p class=small style="text-align:left">${brs.map(b=>H(b.name)+': '+logs.filter(l=>l.branch==b.name&&l.kind!='redeem').length+' sellos').join(' · ')}</p>
   <button class="big primary" onclick=scan()>Escanear tarjeta de un cliente</button>

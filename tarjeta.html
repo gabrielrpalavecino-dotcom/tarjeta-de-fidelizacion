@@ -2342,7 +2342,7 @@ async function load(){
   try{
     const r=await fetch(C.URL+'/rest/v1/rpc/get_card',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:id})});
     const d=await r.json();
-    if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta.</p>';else draw(d)
+    if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta.</p>';else if(d.alias||!$('#al')||(!$('#al').value&&document.activeElement!=$('#al')))draw(d)
   }catch(e){if($('#t'))$('#t').textContent='Sin conexión, reintentando…'}}
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
 const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
@@ -2358,12 +2358,18 @@ async function addHome(){
   o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:9';o.onclick=()=>o.remove();
   o.innerHTML=`<div style="background:#fff;color:#222;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-width:480px;width:100%;box-sizing:border-box"><h3 style="margin:0 0 10px">📲 Añadir a la pantalla de inicio</h3>${inapp?'<p><b>Abre este enlace en Safari o Chrome</b> para poder añadirla.</p>':ios?'<p>1. Toca el botón <b>Compartir</b> (el cuadrado con la flecha ↑).<br>2. Elige <b>Añadir a pantalla de inicio</b>.<br>3. Toca <b>Añadir</b>.</p>':'<p>1. Toca el menú <b>⋮</b> del navegador.<br>2. Elige <b>Añadir a pantalla de inicio</b> (o <b>Instalar app</b>).<br>3. Confirma.</p>'}<p style="color:#777;font-size:14px;margin:8px 0 0">Así abres tu tarjeta como una app y siempre ves tus sellos al día. (Toca fuera para cerrar)</p></div>`;
   document.body.appendChild(o)}
+async function saveAlias(){
+  const v=$('#al').value.trim(),m=$('#ae');
+  if(!/^[A-Za-z0-9._-]{3,20}$/.test(v)){m.textContent=' Usa de 3 a 20 letras, números, punto, guion o guion bajo, sin espacios.';return}
+  try{const r=await fetch(C.URL+'/rest/v1/rpc/set_alias',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_alias:v})}),x=await r.json();
+  if(x==='ok')load();else m.textContent=x==='taken'?' Ese usuario ya está en uso, prueba otro.':' No se pudo guardar el usuario.'}catch(e){m.textContent=' Sin conexión, inténtalo de nuevo.'}}
 function draw(d){applyTheme((d.config||{}).theme);const th=THEMES[(d.config||{}).theme]||THEMES.clasico;
   const cf={...DEF,...(d.config||{})},st=d.stamps||[],full=st.length>=cf.goal,k=kind(st),pz=full?(k=='s'?cf.prizeS:k=='q'?cf.prizeQ:cf.prize):cf.prize;
   let cells='';for(let i=0;i<cf.goal;i++){const t=st[i];cells+=`<div class="st${t?' on':''}${t=='q'?' sq':''}${t&&last>=0&&i>=last?' pop':''}">${t=='s'?th.a:t=='q'?th.b:i+1}</div>`}
   last=st.length;document.title=cf.title;pwa(cf,th);
-  $('#app').innerHTML=`<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
-  <div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Muestra este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><div class="small row"><button onclick=load()>↻ Actualizar</button>${isApp()?'':'<button class=add onclick=addHome()>📲 Añadir a inicio</button>'}</div>`}
+  const ub=d.alias?`<p class=small>👤 Usuario: <b>${esc(d.alias)}</b> · Tarjeta N.º <b>${esc(id)}</b><br>Guarda estos datos: si pierdes el móvil, el local te devuelve tu tarjeta con ellos.</p>`:`<div class=note><b>👤 Crea tu usuario</b><br>Elige un apodo de 3 a 20 letras o números. <b>No uses tu nombre, teléfono ni email.</b><br>Si pierdes el móvil, el local te devuelve la tarjeta con tu usuario y el número de tarjeta.<input id=al maxlength=20 placeholder="tu usuario" autocapitalize=off autocomplete=off style="display:block;width:100%;box-sizing:border-box;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit"><button onclick=saveAlias() style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--navy);color:#fff;font:inherit;font-weight:800">Guardar usuario</button><span id=ae class=small></span></div>`;
+  $('#app').innerHTML=`${d.alias?'':ub}<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
+  ${d.alias?ub:''}<div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Muestra este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><div class="small row"><button onclick=load()>↻ Actualizar</button>${isApp()?'':'<button class=add onclick=addHome()>📲 Añadir a inicio</button>'}</div>`}
 load();setInterval(()=>{if(!document.hidden)load()},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 </script></body></html>

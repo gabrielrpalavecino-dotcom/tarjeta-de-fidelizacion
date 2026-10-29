@@ -12483,12 +12483,12 @@ function render(){
   if(!me){$('#app').innerHTML='<h1>Sin comercio</h1><p class=sub>Tu usuario todavía no tiene un comercio asignado. Pedíselo al administrador.</p><button onclick=logout()>Salir</button>';return}
   const L=mine(),n=Date.now(),s=[['Tarjetas',L.length],['Activas 30 días',L.filter(c=>n-new Date(c.updated_at)<2592e6).length],['Sellos dados',L.reduce((a,c)=>a+c.total_stamps,0)],['Premios canjeados',L.reduce((a,c)=>a+c.prizes,0)],['Por canjear',L.filter(c=>c.stamps.length>=cfg.goal).length]];
   const adm=me.is_admin?`<label>Comercio</label><select onchange="localStorage.sid=this.value;init()">${shops.map(x=>`<option value="${x.id}" ${x.id==sid?'selected':''}>${H(x.name)}</option>`).join('')}</select><div class=small style="text-align:left">${shops.map(x=>{const K=cards.filter(c=>c.shop_id==x.id);return `<b>${H(x.name)}</b>: ${K.length} tarjetas · ${K.reduce((a,c)=>a+c.total_stamps,0)} sellos · ${K.reduce((a,c)=>a+c.prizes,0)} premios`}).join('<br>')}</div>`:'';
-  $('#app').innerHTML=`<div class=top><div><h1>${th().a} ${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div><button onclick=ajustes()>Ajustes</button></div>${adm}
+  $('#app').innerHTML=`<div class=top><div><h1>${th().a} ${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div>${me.is_admin||me.is_owner?'<button onclick=ajustes()>Ajustes</button>':'<button onclick=logout()>Salir</button>'}</div>${adm}
   <div class=stats>${s.map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
   <p class=small style="text-align:left">${brs.map(b=>H(b.name)+': '+logs.filter(l=>l.branch==b.name&&l.kind!='redeem').length+' sellos').join(' · ')}</p>
   <button class="big primary" onclick=scan()>Escanear tarjeta de un cliente</button>
   <button class=big onclick=nueva()>Nueva tarjeta</button>
-  <label>O escribí el código</label><div class=acts><input id=cod><button onclick="openCard($('#cod').value)">Abrir</button></div>`}
+  <label>Buscar por código o usuario</label><div class=acts><input id=cod><button onclick="openCard($('#cod').value)">Abrir</button></div>`}
 async function login(){try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');await init()}catch(e){err(e)}}
 async function init(){try{await load()}catch(e){err(e)}render()}
 function elegirSuc(){sheet(`<h2>Sucursal</h2><div class=acts style="flex-direction:column">${brs.map(b=>`<button onclick="localStorage.suc='${H(b.name)}';closeS();render()">${H(b.name)}</button>`).join('')}</div>`)}
@@ -12496,33 +12496,39 @@ async function nueva(){
   const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=[...b].map(x=>A[x%A.length]).join(''),link=C.TARJETA+'#'+id;
   try{await api('/rest/v1/cards',{method:'POST',body:J({id,shop_id:sid})});await load();render()}catch(e){return err(e)}
   sheet(`<h2>Tarjeta nueva</h2><p class=small>Que el cliente escanee el QR, o mandale el link.</p><div class=qrb>${qr(link)}</div><p class=small style="text-align:center"><b>${id}</b></p>${shr(link)}<div class=acts><button onclick=closeS()>Listo</button></div>`)}
-async function openCard(id){
-  id=(id||'').trim().toUpperCase();if(!id)return;
-  try{const r=await api('/rest/v1/cards?id=eq.'+encodeURIComponent(id));if(!r.length)return alert('No existe la tarjeta '+id);
+async function openCard(t){
+  t=(t||'').trim();if(!t)return;
+  try{let r=await api('/rest/v1/cards?id=eq.'+encodeURIComponent(t.toUpperCase()));
+  if(!r.length){const q=t.toLowerCase();r=(await api('/rest/v1/cards?alias=ilike.'+encodeURIComponent(t)+'&select=*')).filter(c=>(c.alias||'').toLowerCase()==q)}
+  if(!r.length)return alert('No existe ninguna tarjeta ni usuario "'+t+'"');
+  r.sort((a,b)=>(b.shop_id==sid)-(a.shop_id==sid));
   if(r[0].shop_id!=sid){localStorage.sid=r[0].shop_id;await load();render()}
   cur=r[0];showCard()}catch(e){err(e)}}
 function showCard(){
   const c=cur,full=c.stamps.length>=cfg.goal;
-  sheet(`<h2>${H(c.id)}</h2><div class=stars>${c.stamps.map(G).join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
+  sheet(`<h2>${H(c.id)}</h2><p class=small>${c.alias?'👤 '+H(c.alias):'Sin usuario todavía'} · último movimiento: ${new Date(c.updated_at).toLocaleDateString('es-ES')}</p><div class=stars>${c.stamps.map(G).join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
   (full?`<p><b>🎁 ${H(prize(c.stamps))}</b></p><div class=acts><button class=gold onclick=redeem()>Canjear premio</button></div>`
   :`<div class=acts><button class=primary onclick="stamp('s')">${th().a} Sello A</button><button class=primary onclick="stamp('q')">${th().b} Sello B</button></div>`)+`<div class=acts><button onclick=verQR()>Link / QR del cliente</button><button onclick=closeS()>Cerrar</button></div>`)}
-function verQR(){const l=C.TARJETA+'#'+cur.id;sheet(`<h2>${H(cur.id)}</h2><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
+function verQR(){const l=C.TARJETA+'#'+cur.id;sheet(`<h2>${H(cur.id)}</h2><p class=small>Antes de dar el QR, confirmá con el cliente su usuario y el número de tarjeta.</p><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
 async function patch(b,k){try{const r=await api('/rest/v1/cards?id=eq.'+cur.id,{method:'PATCH',body:J({...b,updated_at:new Date().toISOString()})});cur=r[0];await api('/rest/v1/log',{method:'POST',body:J({card_id:cur.id,shop_id:cur.shop_id,branch:suc(),kind:k})});await load();render();showCard()}catch(e){err(e)}}
 const stamp=t=>patch({stamps:[...cur.stamps,t],total_stamps:cur.total_stamps+1},t);
 const redeem=()=>patch({stamps:[],prizes:cur.prizes+1},'redeem');
 function ajustes(){
-  const s=shops.find(x=>x.id==sid);
-  sheet(`<h2>Ajustes · ${H(s.name)}</h2><label>Nombre</label><input id=a1 value="${H(s.name)}"><label>Estética</label><select id=a6>${Object.entries(THEMES).map(([k,t])=>`<option value="${k}" ${k==s.theme?'selected':''}>${t.n}</option>`).join('')}</select><label>Sellos para el premio</label><input id=a2 type=number min=1 max=30 value="${s.goal}"><label>Premio normal</label><input id=a3 value="${H(cfg.prize)}"><label>Sorpresa: todos ${th().a}</label><input id=a4 value="${H(cfg.prizeS)}"><label>Sorpresa: todos ${th().b}</label><input id=a5 value="${H(cfg.prizeQ)}">
+  const s=shops.find(x=>x.id==sid),own=me.is_admin||me.is_owner,f=(l,i,v,ph)=>`<label>${l}</label><input id=${i} value="${H(v)}" ${ph?`placeholder="${ph}"`:''}>`;
+  sheet(`<h2>Ajustes · ${H(s.name)}</h2><h3>Datos del local</h3>${f('Razón social','d1',s.legal_name)}${f('NIF / CIF','d2',s.nif)}${f('Teléfono','d3',s.phone)}${f('Dirección','d4',s.address)}
+  <h3>Tarjeta</h3>${f('Nombre comercial','a1',s.name)}<label>Estética</label><select id=a6>${Object.entries(THEMES).map(([k,t])=>`<option value="${k}" ${k==s.theme?'selected':''}>${t.n}</option>`).join('')}</select><label>Sellos para el premio</label><input id=a2 type=number min=1 max=30 value="${s.goal}">${f('Premio normal','a3',cfg.prize)}${f('Sorpresa: todos '+th().a,'a4',cfg.prizeS)}${f('Sorpresa: todos '+th().b,'a5',cfg.prizeQ)}
   <div class=acts><button class=primary onclick=saveCfg()>Guardar</button></div>
   <label>Sucursales: ${brs.map(b=>H(b.name)).join(', ')}</label><div class=acts><input id=nb placeholder="Nueva sucursal"><button onclick=addBr()>Agregar</button></div>`+
-  (me.is_admin?`<label>Nuevo comercio</label><div class=acts><input id=ns placeholder="Nombre"><button onclick=addShop()>Crear</button></div><label>Acceso del local (cada local entra con su propio email y clave)</label><div id=lst class=small style="text-align:left"></div><input id=em2 type=email placeholder="email del local"><input id=pw2 type=text placeholder="clave (mínimo 8 caracteres)" style="margin-top:8px"><div class=acts><button class=primary onclick=crear()>Crear / cambiar acceso</button></div>`:'')+
-  `<div class=acts><button onclick=closeS()>Cerrar</button><button onclick=logout()>Salir</button></div>`);if(me.is_admin)listAcc()}
+  (me.is_admin?`<label>Nuevo comercio</label><div class=acts><input id=ns placeholder="Nombre"><button onclick=addShop()>Crear</button></div>`:'')+
+  (own?`<h3>Claves de acceso</h3><div id=lst class=small style="text-align:left"></div><input id=em2 type=email placeholder="email del empleado"><input id=pw2 type=text placeholder="clave (mínimo 8 caracteres)" style="margin-top:8px">${me.is_admin?'<label style="display:flex;gap:8px;align-items:center"><input id=ow type=checkbox style="width:auto;min-height:0"> Es el dueño (puede administrar claves)</label>':''}<div class=acts><button class=primary onclick=crear()>Crear / cambiar clave</button></div><label>Mi clave nueva</label><div class=acts><input id=pw3 type=password placeholder="mínimo 8 caracteres"><button onclick=miClave()>Cambiar</button></div>`:'')+
+  `<div class=acts><button onclick=closeS()>Cerrar</button><button onclick=logout()>Salir</button></div>`);if(own)listAcc()}
 const act=async f=>{try{await f();await load();render();closeS()}catch(e){err(e)}};
-const saveCfg=()=>act(()=>api('/rest/v1/shops?id=eq.'+sid,{method:'PATCH',body:J({name:$('#a1').value,theme:$('#a6').value,goal:Math.max(1,+$('#a2').value||10),data:{prize:$('#a3').value,prizeS:$('#a4').value,prizeQ:$('#a5').value}})}));
+const saveCfg=()=>{const nif=$('#d2').value.trim().toUpperCase().replace(/[\s-]/g,'');if(nif&&!/^([XYZ]?\d{7,8}[A-Z]|[A-Z]\d{7}[A-Z0-9])$/.test(nif)&&!confirm('El NIF/CIF "'+nif+'" no parece válido. ¿Guardar igual?'))return;return act(()=>api('/rest/v1/shops?id=eq.'+sid,{method:'PATCH',body:J({name:$('#a1').value,theme:$('#a6').value,goal:Math.max(1,+$('#a2').value||10),data:{prize:$('#a3').value,prizeS:$('#a4').value,prizeQ:$('#a5').value},legal_name:$('#d1').value.trim(),nif,phone:$('#d3').value.trim(),address:$('#d4').value.trim()})}))};
 const addBr=()=>$('#nb').value.trim()&&act(()=>api('/rest/v1/branches',{method:'POST',body:J({shop_id:sid,name:$('#nb').value.trim()})}));
 const addShop=()=>{const n=$('#ns').value.trim(),id=n.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'');if(!id)return;act(async()=>{await api('/rest/v1/shops',{method:'POST',body:J({id,name:n})});await api('/rest/v1/branches',{method:'POST',body:J({shop_id:id,name:'Principal'})});localStorage.sid=id})};
-async function listAcc(){try{const r=await api('/rest/v1/rpc/list_staff',{method:'POST',body:'{}'}),e=$('#lst');if(e)e.innerHTML=r.filter(x=>x.shop_id==sid).map(x=>H(x.email)+(x.is_admin?' (admin)':` <button onclick="quitar('${H(x.email)}')">✕</button>`)).join('<br>')||'Sin accesos todavía'}catch(e){}}
-async function crear(){try{alert(await api('/rest/v1/rpc/create_staff',{method:'POST',body:J({p_email:$('#em2').value,p_password:$('#pw2').value,p_shop:sid})}));$('#pw2').value='';listAcc()}catch(e){err(e)}}
+async function listAcc(){try{const r=await api('/rest/v1/rpc/list_staff',{method:'POST',body:'{}'}),e=$('#lst');if(e)e.innerHTML=r.filter(x=>x.shop_id==sid).map(x=>H(x.email)+(x.is_admin?' (admin)':x.is_owner?' (dueño)':'')+(x.is_admin||(x.is_owner&&!me.is_admin)?'':` <button onclick="quitar('${H(x.email)}')">✕</button>`)).join('<br>')||'Sin accesos todavía'}catch(e){}}
+async function crear(){try{alert(await api('/rest/v1/rpc/create_staff',{method:'POST',body:J({p_email:$('#em2').value,p_password:$('#pw2').value,p_shop:sid,p_owner:!!($('#ow')&&$('#ow').checked)})}));$('#pw2').value='';listAcc()}catch(e){err(e)}}
+async function miClave(){try{alert(await api('/rest/v1/rpc/create_staff',{method:'POST',body:J({p_email:JSON.parse(atob(S.token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).email,p_password:$('#pw3').value,p_shop:me.shop_id})}));$('#pw3').value=''}catch(e){err(e)}}
 async function quitar(m){if(!confirm('¿Quitar el acceso de '+m+'?'))return;try{await api('/rest/v1/rpc/remove_staff',{method:'POST',body:J({p_email:m})});listAcc()}catch(e){err(e)}}
 function found(t){stop();openCard(t.includes('#')?t.split('#').pop():t)}
 async function scan(){

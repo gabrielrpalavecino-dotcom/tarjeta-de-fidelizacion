@@ -2347,7 +2347,8 @@ async function load(){
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
 const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 function icon(z,th){const c=document.createElement('canvas');c.width=c.height=z;const x=c.getContext('2d');x.fillStyle=th.sky||'#5aa7d8';x.fillRect(0,0,z,z);x.font=Math.round(z*.58)+'px serif';x.textAlign='center';x.textBaseline='middle';x.fillText(th.a,z/2,z*.54);return c.toDataURL('image/png')}
-function pwa(cf,th){
+function pwa(cf,th){try{pwa0(cf,th)}catch(e){}}
+function pwa0(cf,th){
   const k=cf.title+id;if(pwa.k===k)return;pwa.k=k;
   const i1=icon(192,th),i2=icon(512,th),mk=(r,h)=>{let l=document.querySelector('link[rel="'+r+'"]');if(!l){l=document.createElement('link');l.rel=r;document.head.appendChild(l)}l.href=h};
   mk('apple-touch-icon',i1);

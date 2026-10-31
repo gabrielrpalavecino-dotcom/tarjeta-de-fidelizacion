@@ -29,7 +29,19 @@ main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
 .small{color:var(--mute);font-size:14px;text-align:center;margin:12px 4px 0}
 .note{background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:14px;color:var(--ink)}
 </style>
-<style>.foot{margin:18px 8px 8px;text-align:center;font-size:12px;color:var(--mute);line-height:1.5}.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.small button.add{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.22)}.small button{min-height:44px;padding:8px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}</style></head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid</div><script src="config.js"></script><script src="themes.js"></script><script>
+<style>.foot{margin:18px 8px 8px;text-align:center;font-size:12px;color:var(--mute);line-height:1.5}.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.small button.add{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.22)}.small button{min-height:44px;padding:8px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}</style><style>:root{--bg2:#d6e6f3;--surface2:#f1f7fc;--line2:#a9bccf;--glow:rgba(111,179,224,.38);--glow2:rgba(185,122,0,.16);--prim1:#3d7099;--prim2:#0d4a73;--gold1:#ffd477;--shadow:rgba(13,74,115,.55);--sky1:#9ccdea;--sky2:#2d6a97}
+html{background:var(--bg)}
+body{min-height:100vh;background:radial-gradient(800px 380px at 90% -60px,var(--glow),transparent 70%),radial-gradient(600px 340px at -10% 18%,var(--glow2),transparent 70%),linear-gradient(170deg,var(--bg2),var(--bg) 60%);background-attachment:fixed}
+.card{background:linear-gradient(180deg,#fff,var(--surface2));box-shadow:0 26px 42px -22px var(--shadow),0 1px 0 rgba(255,255,255,.9) inset}
+.card header{background:linear-gradient(135deg,var(--sky1),var(--sky) 50%,var(--sky2));text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.st{background:linear-gradient(180deg,rgba(255,255,255,.8),transparent)}
+.st.on{background:radial-gradient(circle at 30% 25%,#fff,var(--surface2) 62%,var(--glow));box-shadow:0 8px 14px -8px var(--shadow),inset 0 -3px 6px rgba(0,0,0,.08)}
+.card.ready{box-shadow:0 0 0 3px var(--gold1),0 26px 42px -20px var(--shadow)}
+.qr,.note{background:linear-gradient(180deg,#fff,var(--surface2));box-shadow:0 16px 28px -20px var(--shadow)}
+.small button{background:linear-gradient(180deg,#fff,var(--surface2));border:1px solid var(--line2);font-weight:700;border-radius:14px;box-shadow:0 1px 0 #fff inset,0 8px 16px -10px var(--shadow)}
+.small button.add{background:linear-gradient(180deg,var(--prim1),var(--prim2));color:#fff;border-color:var(--prim2);text-shadow:0 1px 1px rgba(0,0,0,.3);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 24px -12px var(--shadow)}
+</style>
+</head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid</div><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -2365,13 +2377,13 @@ async function saveAlias(){
   try{const r=await fetch(C.URL+'/rest/v1/rpc/set_alias',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_alias:v})}),x=await r.json();
   if(x==='ok')load();else m.textContent=x==='taken'?' Ese usuario ya está en uso, prueba otro.':' No se pudo guardar el usuario.'}catch(e){m.textContent=' Sin conexión, inténtalo de nuevo.'}}
 function mb(cf){const u=String(cf.maps||'');return /^https:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(u)?`<div class="small row"><button onclick="window.open(this.dataset.u,'_blank','noopener')" data-u="${esc(u)}">📍 Cómo llegar</button></div>`:''}
-function draw(d){applyTheme((d.config||{}).theme);const th=THEMES[(d.config||{}).theme]||THEMES.clasico;
+function draw(d){applyTheme((d.config||{}).theme);try{localStorage.tt=(d.config||{}).theme||''}catch(e){}const th=THEMES[(d.config||{}).theme]||THEMES.clasico;
   const cf={...DEF,...(d.config||{})},st=d.stamps||[],full=st.length>=cf.goal,k=kind(st),pz=full?(k=='s'?cf.prizeS:k=='q'?cf.prizeQ:cf.prize):cf.prize;
   let cells='';for(let i=0;i<cf.goal;i++){const t=st[i];cells+=`<div class="st${t?' on':''}${t=='q'?' sq':''}${t&&last>=0&&i>=last?' pop':''}">${t=='s'?th.a:t=='q'?th.b:i+1}</div>`}
   last=st.length;document.title=cf.title;pwa(cf,th);
   const ub=d.alias?`<p class=small>👤 Usuario: <b>${esc(d.alias)}</b> · Tarjeta N.º <b>${esc(id)}</b><br>Guarda estos datos: si pierdes el móvil, el local te devuelve tu tarjeta con ellos.</p>`:`<div class=note><b>👤 Crea tu usuario</b><br>Elige un apodo de 3 a 20 letras o números. <b>No uses tu nombre, teléfono ni email.</b><br>Si pierdes el móvil, el local te devuelve la tarjeta con tu usuario y el número de tarjeta.<input id=al maxlength=20 placeholder="tu usuario" autocapitalize=off autocomplete=off style="display:block;width:100%;box-sizing:border-box;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit"><button onclick=saveAlias() style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--navy);color:#fff;font:inherit;font-weight:800">Guardar usuario</button><span id=ae class=small></span></div>`;
   $('#app').innerHTML=`${d.alias?'':ub}<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
   ${d.alias?ub:''}<div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Muestra este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><div class="small row"><button onclick=load()>↻ Actualizar</button>${isApp()?'':'<button class=add onclick=addHome()>📲 Añadir a inicio</button>'}</div>${mb(cf)}`}
-load();setInterval(()=>{if(!document.hidden)load()},5000);
+try{applyTheme(localStorage.tt)}catch(e){}load();setInterval(()=>{if(!document.hidden)load()},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 </script></body></html>

@@ -38,7 +38,24 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 .hist{font-size:14px;color:var(--mute);margin:8px 0 0;padding-left:18px}
 body{border-top:8px solid var(--sky)}.top h1,.stats b{color:var(--sky-ink)}
 </style>
-<style>main input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}.acts input{flex:2}.foot{margin:26px 8px 18px;text-align:center;font-size:12px;color:var(--mute)}.acts button{flex:1}main select,.panel select{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:10px 12px;min-height:44px}</style></head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid</div><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script src="themes.js"></script><script>
+<style>main input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}.acts input{flex:2}.foot{margin:26px 8px 18px;text-align:center;font-size:12px;color:var(--mute)}.acts button{flex:1}main select,.panel select{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:10px 12px;min-height:44px}</style><style>:root{--bg2:#d6e6f3;--surface2:#f1f7fc;--line2:#a9bccf;--glow:rgba(111,179,224,.38);--glow2:rgba(185,122,0,.16);--prim1:#3d7099;--prim2:#0d4a73;--gold1:#ffd477;--shadow:rgba(13,74,115,.55);--sky1:#9ccdea;--sky2:#2d6a97}
+html{background:var(--bg)}
+body{border-top:0;min-height:100vh;background:radial-gradient(900px 420px at 88% -90px,var(--glow),transparent 70%),radial-gradient(700px 380px at -12% 22%,var(--glow2),transparent 70%),linear-gradient(168deg,var(--bg2),var(--bg) 58%);background-attachment:fixed}
+body::before{content:"";display:block;height:8px;background:linear-gradient(90deg,var(--prim2),var(--sky),var(--prim1))}
+.top h1,.stats b{color:var(--prim2);text-shadow:0 1px 0 rgba(255,255,255,.7)}
+button{background:linear-gradient(180deg,var(--surface),var(--surface2));border:1px solid var(--line2);color:var(--ink);font-weight:700;border-radius:14px;box-shadow:0 1px 0 #fff inset,0 8px 16px -10px var(--shadow);transition:transform .08s,box-shadow .15s}
+button:active{transform:translateY(1px);box-shadow:0 1px 0 #fff inset,0 3px 8px -6px var(--shadow)}
+.primary{background:linear-gradient(180deg,var(--prim1),var(--prim2));color:#fff;border-color:var(--prim2);text-shadow:0 1px 1px rgba(0,0,0,.3);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 24px -12px var(--shadow)}
+.gold{background:linear-gradient(180deg,var(--gold1),var(--gold));border-color:var(--gold);color:#1b2a41;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 22px -12px var(--shadow)}
+.big{border-radius:18px}
+.stats{border:0;gap:10px}
+.stats div,.stats div:nth-last-child(-n+3){flex:1 1 28%;border:1px solid var(--line2);border-radius:16px;background:linear-gradient(150deg,var(--surface),var(--surface2));box-shadow:0 14px 24px -16px var(--shadow),0 1px 0 #fff inset}
+.panel{background:linear-gradient(180deg,var(--surface),var(--bg2));border-radius:26px 26px 0 0;box-shadow:0 -20px 44px -14px var(--shadow)}
+.panel input,.panel textarea,.panel select,main input,main select{background:linear-gradient(180deg,var(--bg),#fff 90%);border:1px solid var(--line2);border-radius:12px;box-shadow:inset 0 2px 4px rgba(0,0,0,.06)}
+.sheet{background:linear-gradient(180deg,rgba(10,20,35,.35),rgba(10,20,35,.7));backdrop-filter:blur(3px)}
+.qrb{box-shadow:0 16px 28px -16px var(--shadow)}
+</style>
+</head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid</div><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -12443,19 +12460,20 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 </script><script>
 const C=window.CFG,$=s=>document.querySelector(s),H=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),J=JSON.stringify;
 const DEF={goal:10,prize:'Un premio',prizeS:'Premio sorpresa',prizeQ:'Premio sorpresa'};
-let S=JSON.parse(localStorage.getItem('sb-ses')||'null'),me=null,shops=[],brs=[],cards=[],logs=[],sid='',cfg={...DEF},cur=null,stream=null,raf=0;
+let S=null;try{S=JSON.parse(localStorage.getItem('sb-ses')||'null')}catch(e){}let loadErr='',me=null,shops=[],brs=[],cards=[],logs=[],sid='',cfg={...DEF},cur=null,stream=null,raf=0;
 const th=()=>THEMES[cfg.theme]||THEMES.clasico,G=x=>x=='s'?th().a:th().b;
 const kind=a=>a.every(x=>x=='s')?'s':a.every(x=>x=='q')?'q':'n';
 const prize=a=>({s:cfg.prizeS,q:cfg.prizeQ,n:cfg.prize})[kind(a)];
 const qr=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true})};
 const uid=()=>JSON.parse(atob(S.token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub;
 const shr=l=>`<div class=acts><button onclick="navigator.clipboard.writeText('${l}');this.textContent='¡Copiado!'">Copiar link</button><button onclick="window.open('https://wa.me/?text=${encodeURIComponent('Tu tarjeta de sellos: '+l)}')">WhatsApp</button></div>`;
-async function auth(b,g){const r=await fetch(C.URL+'/auth/v1/token?grant_type='+g,{method:'POST',headers:{apikey:C.KEY,'Content-Type':'application/json'},body:J(b)});const j=await r.json();if(!r.ok)throw new Error(j.error_description||j.msg||'Error');S={token:j.access_token,ref:j.refresh_token,exp:j.expires_at};localStorage.setItem('sb-ses',J(S))}
+async function auth(b,g){const r=await fetch(C.URL+'/auth/v1/token?grant_type='+g,{method:'POST',headers:{apikey:C.KEY,'Content-Type':'application/json'},body:J(b)});const j=await r.json();if(!r.ok)throw new Error(j.error_description||j.msg||'Error');S={token:j.access_token,ref:j.refresh_token,exp:j.expires_at};try{localStorage.setItem('sb-ses',J(S))}catch(e){}}
 function logout(){S=null;me=null;localStorage.removeItem('sb-ses');closeS();render()}
-async function api(p,o={}){
-  if(S&&S.exp<Date.now()/1e3+60)await auth({refresh_token:S.ref},'refresh_token').catch(logout);
+async function api(p,o={},retry=true){
+  const bye=()=>{logout();return new Error('Sesión vencida: volvé a entrar')};
+  if(S&&S.exp<Date.now()/1e3+60){try{await auth({refresh_token:S.ref},'refresh_token')}catch(e){if(/refresh|session|invalid|expired/i.test(e.message))throw bye()}}
   const r=await fetch(C.URL+p,{...o,headers:{apikey:C.KEY,Authorization:'Bearer '+(S?S.token:C.KEY),'Content-Type':'application/json',Prefer:'return=representation',...(o.headers||{})}});
-  if(r.status==401){logout();throw new Error('Sesión vencida')}
+  if(r.status==401){if(S&&retry){try{await auth({refresh_token:S.ref},'refresh_token');return api(p,o,false)}catch(e){}}throw bye()}
   if(!r.ok){const x=await r.text();let m=x;try{m=JSON.parse(x).message||x}catch(e){}throw new Error(m)}
   return r.json()}
 async function load(){
@@ -12463,24 +12481,23 @@ async function load(){
   shops=await api('/rest/v1/shops?select=*&order=name');
   sid=me.is_admin&&shops.some(s=>s.id==localStorage.sid)?localStorage.sid:me.shop_id;
   const sh=shops.find(s=>s.id==sid)||shops[0];sid=sh.id;
-  cfg={...DEF,...sh.data,title:sh.name,goal:sh.goal,theme:sh.theme,limit:sh.card_limit};
+  cfg={...DEF,...sh.data,title:sh.name,goal:sh.goal,theme:sh.theme,limit:sh.card_limit};try{localStorage.lt=cfg.theme}catch(e){}
   brs=await api('/rest/v1/branches?shop_id=eq.'+sid+'&select=*&order=id');
   cards=await api('/rest/v1/cards?select=*&order=updated_at.desc');
-  logs=await api('/rest/v1/log?shop_id=eq.'+sid+'&select=branch,kind&limit=10000')}
+  logs=await api('/rest/v1/log?shop_id=eq.'+sid+'&select=branch,kind&limit=10000').catch(()=>[])}
 function sheet(h){$('#pn').innerHTML=h;$('#sh').classList.add('open')}
 function stop(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;cancelAnimationFrame(raf)}
 function closeS(){stop();$('#sh').classList.remove('open')}
 const err=e=>alert(e.message||e);
 const mine=()=>cards.filter(c=>c.shop_id==sid);
 const suc=()=>{const n=localStorage.suc;return brs.some(b=>b.name==n)?n:(brs[0]||{}).name||''};
-function applyStaff(k){const t=THEMES[k]||THEMES.clasico,r=document.documentElement,st=r.style,on=k&&t.bg,set=(p,v)=>v?st.setProperty(p,v):st.removeProperty(p);
-  set('--bg',on&&t.bg);set('--surface',on&&'#fff');set('--ink',on&&t.ink);set('--mute',on&&t.mute);set('--line',on&&t.line);set('--sky',on&&t.sky);set('--sky-ink',on&&t.navy);set('--gold',on&&t.gold);
-  on?r.setAttribute('data-theme','light'):r.removeAttribute('data-theme');
-  let m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m)}m.content=on?t.sky:'#0f1824'}
+function applyStaff(k){const t=palette(k),st=document.documentElement.style,V={'--bg':t.bg,'--surface':'#fff','--ink':t.ink,'--mute':t.mute,'--line':t.line,'--sky':t.sky,'--sky-ink':t.navy,'--gold':t.gold,...derive(t)};
+  Object.entries(V).forEach(([p,v])=>st.setProperty(p,v));document.documentElement.setAttribute('data-theme','light');
+  let m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m)}m.content=t.sky}
 function render(){
-  const ok=!!(S&&me);applyStaff(ok?cfg.theme:null);document.title=(ok?cfg.title+' · ':'')+'Gestión';
-  if(!S){$('#app').innerHTML=`<h1>Gestión</h1><p class=sub>Ingresá con tu usuario</p><label>Email</label><input id=em type=email autocomplete=username><label>Contraseña</label><input id=pw type=password autocomplete=current-password><p><button class="big primary" onclick=login()>Entrar</button></p>`;return}
-  if(!me){$('#app').innerHTML='<h1>Sin comercio</h1><p class=sub>Tu usuario todavía no tiene un comercio asignado. Pedíselo al administrador.</p><button onclick=logout()>Salir</button>';return}
+  const ok=!!(S&&me);applyStaff(ok?cfg.theme:localStorage.lt);document.title=(ok?cfg.title+' · ':'')+'Gestión';
+  if(!S){$('#app').innerHTML=`<h1>Gestión</h1><p class=sub>Ingresá con tu usuario</p><label>Email</label><input id=em type=email autocomplete=username value="${H(localStorage.getItem('sb-mail')||'')}"><label>Contraseña</label><input id=pw type=password autocomplete=current-password><p><button class="big primary" onclick=login()>Entrar</button></p>`;return}
+  if(!me){$('#app').innerHTML=loadErr?`<h1>No se pudo cargar</h1><p class=sub>${H(loadErr)}</p><button class="big primary" onclick=init()>Reintentar</button><button class=big onclick=logout()>Salir</button>`:'<h1>Sin comercio</h1><p class=sub>Tu usuario todavía no tiene un comercio asignado. Pedíselo al administrador.</p><button class="big" onclick=logout()>Salir</button>';return}
   const L=mine(),n=Date.now(),s=[['Tarjetas',L.length+(cfg.limit?' / '+cfg.limit:'')],['Activas 30 días',L.filter(c=>n-new Date(c.updated_at)<2592e6).length],['Sellos dados',L.reduce((a,c)=>a+c.total_stamps,0)],['Premios canjeados',L.reduce((a,c)=>a+c.prizes,0)],['Por canjear',L.filter(c=>c.stamps.length>=cfg.goal).length]];
   const adm=me.is_admin?`<label>Comercio</label><select onchange="localStorage.sid=this.value;init()">${shops.map(x=>`<option value="${x.id}" ${x.id==sid?'selected':''}>${H(x.name)}</option>`).join('')}</select><div class=acts><button class=primary onclick=locales()>🏪 Administrar locales (agregar / quitar)</button></div><div class=small style="text-align:left">${shops.map(x=>{const K=cards.filter(c=>c.shop_id==x.id);return `<b>${H(x.name)}</b>: ${K.length}${x.card_limit?' / '+x.card_limit:''} tarjetas · ${K.reduce((a,c)=>a+c.total_stamps,0)} sellos · ${K.reduce((a,c)=>a+c.prizes,0)} premios`}).join('<br>')}</div>`:'';
   $('#app').innerHTML=`<div class=top><div><h1>${th().a} ${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div>${me.is_admin||me.is_owner?'<button onclick=ajustes()>Ajustes</button>':''}</div>${adm}
@@ -12489,8 +12506,8 @@ function render(){
   <button class="big primary" onclick=scan()>Escanear tarjeta de un cliente</button>
   <button class=big onclick=nueva()>Nueva tarjeta</button>
   <label>Buscar por código o usuario</label><div class=acts><input id=cod><button onclick="openCard($('#cod').value)">Abrir</button></div><div class=acts><button onclick=logout()>Salir</button></div>${me.is_admin?'':'<div class=acts><button onclick=soporte()>🛠 Servicio técnico</button></div>'}`}
-async function login(){try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');await init()}catch(e){err(e)}}
-async function init(){try{await load()}catch(e){err(e)}render()}
+async function login(){try{const m=$('#em').value.trim();await auth({email:m,password:$('#pw').value},'password');localStorage.setItem('sb-mail',m);await init()}catch(e){err(e)}}
+async function init(){try{loadErr='';await load()}catch(e){me=null;loadErr=e.message||String(e)}render()}
 function elegirSuc(){sheet(`<h2>Sucursal</h2><div class=acts style="flex-direction:column">${brs.map(b=>`<button onclick="localStorage.suc='${H(b.name)}';closeS();render()">${H(b.name)}</button>`).join('')}</div>`)}
 async function nueva(){
   const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=sid.replace(/[^a-z0-9]/gi,'').slice(0,3).toUpperCase()+'-'+[...b].map(x=>A[x%A.length]).join(''),link=C.TARJETA+'#'+id;
@@ -12552,5 +12569,6 @@ async function scan(){
     const cv=document.createElement('canvas'),x=cv.getContext('2d',{willReadFrequently:true});
     const t=()=>{if(!stream)return;if(v.videoWidth){cv.width=v.videoWidth;cv.height=v.videoHeight;x.drawImage(v,0,0);const d=x.getImageData(0,0,cv.width,cv.height),r=jsQR(d.data,d.width,d.height);if(r&&r.data)return found(r.data)}raf=requestAnimationFrame(t)};t()
   }catch(e){if($('#dg'))$('#dg').textContent='La cámara en vivo no abrió ('+e.name+'). Usá "Sacar foto al QR".'}}
-if(S)init();else render();
+applyStaff(localStorage.lt);
+if(S){$('#app').innerHTML='<p class=sub style="margin-top:34vh;text-align:center">Cargando…</p>';init()}else render();
 </script></body></html>

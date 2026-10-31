@@ -2345,16 +2345,18 @@ const C=window.CFG,$=s=>document.querySelector(s),esc=t=>String(t).replace(/[&<>
 const DEF={title:'Tarjeta de sellos',goal:10,prize:'Un premio',prizeS:'Premio sorpresa',prizeQ:'Premio sorpresa'};
 const kind=a=>a.every(x=>x=='s')?'s':a.every(x=>x=='q')?'q':'n';
 const qr=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true})};
-let id=(location.hash.slice(1)||localStorage.getItem('tid')||'').trim().toUpperCase(),last=-1;
+let id=(location.hash.slice(1)||localStorage.getItem('tid')||'').trim().toLowerCase(),last=-1;
 if(location.hash.slice(1))localStorage.setItem('tid',id);
-if(id&&location.hash.slice(1).toUpperCase()!==id)history.replaceState(null,'','#'+id);
-addEventListener('hashchange',()=>{const h=location.hash.slice(1).trim().toUpperCase();if(h){id=h;localStorage.setItem('tid',id);last=-1;load()}});
+if(id&&location.hash.slice(1).toLowerCase()!==id)history.replaceState(null,'','#'+id);
+addEventListener('hashchange',()=>{const h=location.hash.slice(1).trim().toLowerCase();if(h){id=h;localStorage.setItem('tid',id);last=-1;load()}});
 async function load(){
   if(!id){$('#app').innerHTML='<p class=note>Escanea el QR del local para tener tu tarjeta.</p>';return}
   try{
-    const r=await fetch(C.URL+'/rest/v1/rpc/get_card',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:id})});
+    const r=await fetch(C.URL+'/rest/v1/rpc/get_card',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_secret:id})});
     const d=await r.json();
-    if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta.</p>';else if(d.alias||!$('#al')||(!$('#al').value&&document.activeElement!=$('#al')))draw(d)
+    if(!r.ok){const m=(d&&d.message)||'Error';if($('#t'))$('#t').textContent=m;else $('#app').innerHTML='<p class=note>'+esc(m)+'</p>';return}
+    if(d){const sig=JSON.stringify([d.stamps,d.prizes,d.alias]);if(sig!==seen){seen=sig;wake()}}
+    if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta. Si es una tarjeta anterior, pide tu nuevo QR en el local.</p>';else if(d.alias||!$('#al')||(!$('#al').value&&document.activeElement!=$('#al')))draw(d)
   }catch(e){if($('#t'))$('#t').textContent='Sin conexión, reintentando…'}}
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
 const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
@@ -2373,17 +2375,38 @@ async function addHome(){
   document.body.appendChild(o)}
 async function saveAlias(){
   const v=$('#al').value.trim(),m=$('#ae');
-  if(!/^[A-Za-z0-9._-]{3,20}$/.test(v)){m.textContent=' Usa de 3 a 20 letras, números, punto, guion o guion bajo, sin espacios.';return}
-  try{const r=await fetch(C.URL+'/rest/v1/rpc/set_alias',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:id,p_alias:v})}),x=await r.json();
-  if(x==='ok')load();else m.textContent=x==='taken'?' Ese usuario ya está en uso, prueba otro.':' No se pudo guardar el usuario.'}catch(e){m.textContent=' Sin conexión, inténtalo de nuevo.'}}
+  if(!/^[A-Za-z0-9._-]{3,20}$/.test(v)||!/[A-Za-z]/.test(v)){m.textContent=' Usa de 3 a 20 caracteres, con al menos una letra y sin espacios (letras, números, punto, guion).';return}
+  try{const r=await fetch(C.URL+'/rest/v1/rpc/set_alias',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_secret:id,p_alias:v})}),x=await r.json();
+  if(x==='ok')load();else m.textContent=x==='taken'?' Ese usuario ya está en uso, prueba otro.':x==='limit'?' Demasiados intentos, espera unos minutos.':' No se pudo guardar el usuario.'}catch(e){m.textContent=' Sin conexión, inténtalo de nuevo.'}}
+let D0=null;
+async function savePic(){
+  if(!D0)return;
+  const cf=D0.config||{},p=palette(cf.theme),q=qrcode(0,'M');q.addData(C.TARJETA+'#'+id);q.make();
+  const n=q.getModuleCount(),W=900,Hh=1200,cv=document.createElement('canvas');cv.width=W;cv.height=Hh;const x=cv.getContext('2d');
+  x.fillStyle=p.bg;x.fillRect(0,0,W,Hh);x.fillStyle=p.sky;x.fillRect(0,0,W,170);
+  x.textAlign='center';x.fillStyle=p.hd;x.font='700 62px Georgia,serif';x.fillText(String(cf.title||'Mi tarjeta').slice(0,24),W/2,108);
+  x.fillStyle='#fff';x.fillRect(150,230,600,600);
+  const s=Math.floor(520/n),o=150+(600-s*n)/2,oy=230+(600-s*n)/2;x.fillStyle='#000';
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(o+k*s,oy+r*s,s,s);
+  x.fillStyle=p.ink;x.font='700 54px Arial,sans-serif';x.fillText('N.º '+D0.id,W/2,930);
+  x.font='40px Arial,sans-serif';if(D0.alias)x.fillText('Usuario: '+D0.alias,W/2,1000);
+  x.fillStyle=p.mute;x.font='32px Arial,sans-serif';x.fillText('Guárdala en un lugar privado.',W/2,1070);x.fillText('Con este QR recuperas tu tarjeta.',W/2,1112);
+  x.font='26px Arial,sans-serif';x.fillText('© 2026 Krusty Web App · Madrid',W/2,1160);
+  cv.toBlob(async b=>{const f=new File([b],'mi-tarjeta.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:'Mi tarjeta de sellos'});return}catch(e){if(e&&e.name==='AbortError')return}}
+    const u=URL.createObjectURL(b);if(/iPhone|iPad|iPod/.test(navigator.userAgent)){window.open(u)}else{const a=document.createElement('a');a.href=u;a.download='mi-tarjeta.png';document.body.appendChild(a);a.click();a.remove()}},'image/png')}
 function mb(cf){const u=String(cf.maps||'');return /^https:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(u)?`<div class="small row"><button onclick="window.open(this.dataset.u,'_blank','noopener')" data-u="${esc(u)}">📍 Cómo llegar</button></div>`:''}
-function draw(d){applyTheme((d.config||{}).theme);try{localStorage.tt=(d.config||{}).theme||''}catch(e){}const th=THEMES[(d.config||{}).theme]||THEMES.clasico;
+function draw(d){D0=d;applyTheme((d.config||{}).theme);try{localStorage.tt=(d.config||{}).theme||''}catch(e){}const th=THEMES[(d.config||{}).theme]||THEMES.clasico;
   const cf={...DEF,...(d.config||{})},st=d.stamps||[],full=st.length>=cf.goal,k=kind(st),pz=full?(k=='s'?cf.prizeS:k=='q'?cf.prizeQ:cf.prize):cf.prize;
   let cells='';for(let i=0;i<cf.goal;i++){const t=st[i];cells+=`<div class="st${t?' on':''}${t=='q'?' sq':''}${t&&last>=0&&i>=last?' pop':''}">${t=='s'?th.a:t=='q'?th.b:i+1}</div>`}
   last=st.length;document.title=cf.title;pwa(cf,th);
-  const ub=d.alias?`<p class=small>👤 Usuario: <b>${esc(d.alias)}</b> · Tarjeta N.º <b>${esc(id)}</b><br>Guarda estos datos: si pierdes el móvil, el local te devuelve tu tarjeta con ellos.</p>`:`<div class=note><b>👤 Crea tu usuario</b><br>Elige un apodo de 3 a 20 letras o números. <b>No uses tu nombre, teléfono ni email.</b><br>Si pierdes el móvil, el local te devuelve la tarjeta con tu usuario y el número de tarjeta.<input id=al maxlength=20 placeholder="tu usuario" autocapitalize=off autocomplete=off style="display:block;width:100%;box-sizing:border-box;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit"><button onclick=saveAlias() style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--navy);color:#fff;font:inherit;font-weight:800">Guardar usuario</button><span id=ae class=small></span></div>`;
-  $('#app').innerHTML=`${d.alias?'':ub}<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
-  ${d.alias?ub:''}<div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Muestra este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><div class="small row"><button onclick=load()>↻ Actualizar</button>${isApp()?'':'<button class=add onclick=addHome()>📲 Añadir a inicio</button>'}</div>${mb(cf)}`}
-try{applyTheme(localStorage.tt)}catch(e){}load();setInterval(()=>{if(!document.hidden)load()},5000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+  const ub=d.alias?`<p class=small>👤 Usuario: <b>${esc(d.alias)}</b> · Tarjeta N.º <b>${esc(d.id)}</b><br>Guarda estos datos: si pierdes el móvil, el local te devuelve tu tarjeta con ellos.</p>`:`<div class=note><b>👤 Crea tu usuario</b><br>Elige un apodo de 3 a 20 letras o números. <b>No uses tu nombre, teléfono ni email.</b><br>Si pierdes el móvil, el local te devuelve la tarjeta con tu usuario y el número de tarjeta.<input id=al maxlength=20 placeholder="tu usuario" autocapitalize=off autocomplete=off style="display:block;width:100%;box-sizing:border-box;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit"><button onclick=saveAlias() style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--navy);color:#fff;font:inherit;font-weight:800">Guardar usuario</button><span id=ae class=small></span></div>`;
+  $('#app').innerHTML=`${d.alias?'':ub}<div class="card${full?' ready':''}"><header>${esc(cf.title)}</header><div class=body><div class=code>${esc(d.id)}</div><div class=grid style="grid-template-columns:repeat(${Math.min(5,cf.goal)},1fr)">${cells}</div><p class=msg>${full?'🎁 ¡Ya ganaste!':'Te faltan '+(cf.goal-st.length)+' sellos'}</p><p class=rw>${esc(pz)}</p></div></div>
+  ${d.alias?ub:''}<div class=qr>${qr(C.TARJETA+'#'+id)}</div><p class=small>Muestra este QR en el local para que te pongan el sello. La tarjeta se actualiza sola.</p><p class=small id=t>Actualizada ${new Date().toLocaleTimeString()}</p><div class="small row"><button onclick=load()>↻ Actualizar</button><button onclick=savePic()>🖼️ Guardar imagen</button>${isApp()?'':'<button class=add onclick=addHome()>📲 Añadir a inicio</button>'}</div>${mb(cf)}`}
+try{applyTheme(localStorage.tt)}catch(e){}let seen='',act=Date.now();
+const wake=()=>{act=Date.now()};
+['pointerdown','keydown','focus'].forEach(e=>addEventListener(e,wake,{passive:true}));
+const gap=()=>{const i=Date.now()-act;return i<12e4?5000:i<6e5?15000:60000};
+(function tick(){if(!document.hidden)load();setTimeout(tick,gap())})();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){wake();load()}});
 </script></body></html>

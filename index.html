@@ -12510,12 +12510,12 @@ async function login(){try{const m=$('#em').value.trim();await auth({email:m,pas
 async function init(){try{loadErr='';await load()}catch(e){me=null;loadErr=e.message||String(e)}render()}
 function elegirSuc(){sheet(`<h2>Sucursal</h2><div class=acts style="flex-direction:column">${brs.map(b=>`<button onclick="localStorage.suc='${H(b.name)}';closeS();render()">${H(b.name)}</button>`).join('')}</div>`)}
 async function nueva(){
-  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=sid.replace(/[^a-z0-9]/gi,'').slice(0,3).toUpperCase()+'-'+[...b].map(x=>A[x%A.length]).join(''),link=C.TARJETA+'#'+id;
-  try{await api('/rest/v1/cards',{method:'POST',body:J({id,shop_id:sid})});await load();render()}catch(e){return err(e)}
+  const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=sid.replace(/[^a-z0-9]/gi,'').slice(0,3).toUpperCase()+'-'+[...b].map(x=>A[x%A.length]).join('');let link;
+  try{const r=await api('/rest/v1/cards',{method:'POST',body:J({id,shop_id:sid})});link=C.TARJETA+'#'+r[0].secret;await load();render()}catch(e){return err(e)}
   sheet(`<h2>Tarjeta nueva</h2><p class=small>Que el cliente escanee el QR, o mandale el link.</p><div class=qrb>${qr(link)}</div><p class=small style="text-align:center"><b>${id}</b></p>${shr(link)}<div class=acts><button onclick=closeS()>Listo</button></div>`)}
 async function openCard(t){
   t=(t||'').trim();if(!t)return;
-  try{let r=await api('/rest/v1/cards?id=eq.'+encodeURIComponent(t.toUpperCase()));
+  try{const k=t.replace(/[^A-Za-z0-9-]/g,'');let r=k?await api('/rest/v1/cards?or=(id.eq.'+k.toUpperCase()+',secret.eq.'+k.toLowerCase()+')'):[];
   if(!r.length){const q=t.toLowerCase();r=(await api('/rest/v1/cards?alias=ilike.'+encodeURIComponent(t)+'&select=*')).filter(c=>(c.alias||'').toLowerCase()==q)}
   if(!r.length){let o=null;try{o=await api('/rest/v1/rpc/card_owner',{method:'POST',body:J({p_id:t})})}catch(e){}return alert(o?'Esta tarjeta es de «'+o+'». No se puede validar en este local.':'No existe ninguna tarjeta ni usuario "'+t+'"')}
   r.sort((a,b)=>(b.shop_id==sid)-(a.shop_id==sid));
@@ -12526,10 +12526,10 @@ function showCard(){
   sheet(`<h2>${H(c.id)}</h2><p class=small>${c.alias?'👤 '+H(c.alias):'Sin usuario todavía'} · último movimiento: ${new Date(c.updated_at).toLocaleDateString('es-ES')}</p><div class=stars>${c.stamps.map(G).join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
   (full?`<p><b>🎁 ${H(prize(c.stamps))}</b></p><div class=acts><button class=gold onclick=redeem()>Canjear premio</button></div>`
   :`<div class=acts><button class=primary onclick="stamp('s')">${th().a} Sello A</button><button class=primary onclick="stamp('q')">${th().b} Sello B</button></div>`)+`<div class=acts><button onclick=verQR()>Link / QR del cliente</button><button onclick=closeS()>Cerrar</button></div>`)}
-function verQR(){const l=C.TARJETA+'#'+cur.id;sheet(`<h2>${H(cur.id)}</h2><p class=small>Antes de dar el QR, confirmá con el cliente su usuario y el número de tarjeta.</p><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
-async function patch(b,k){try{const r=await api('/rest/v1/cards?id=eq.'+cur.id,{method:'PATCH',body:J({...b,updated_at:new Date().toISOString()})});cur=r[0];await api('/rest/v1/log',{method:'POST',body:J({card_id:cur.id,shop_id:cur.shop_id,branch:suc(),kind:k})});await load();render();showCard()}catch(e){err(e)}}
-const stamp=t=>patch({stamps:[...cur.stamps,t],total_stamps:cur.total_stamps+1},t);
-const redeem=()=>patch({stamps:[],prizes:cur.prizes+1},'redeem');
+function verQR(){const l=C.TARJETA+'#'+cur.secret;sheet(`<h2>${H(cur.id)}</h2><p class=small>Antes de dar el QR, confirmá con el cliente su usuario y el número de tarjeta.</p><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
+async function rpcCard(fn,b){try{cur=await api('/rest/v1/rpc/'+fn,{method:'POST',body:J(b)});await load();render();showCard()}catch(e){err(e)}}
+const stamp=t=>rpcCard('add_stamp',{p_card:cur.id,p_type:t,p_branch:suc()});
+const redeem=()=>rpcCard('redeem_card',{p_card:cur.id,p_branch:suc()});
 function ajustes(){
   const s=shops.find(x=>x.id==sid),own=me.is_admin||me.is_owner,f=(l,i,v,ph)=>`<label>${l}</label><input id=${i} value="${H(v)}" ${ph?`placeholder="${ph}"`:''}>`;
   sheet(`<h2>Ajustes · ${H(s.name)}</h2><h3>Datos del local</h3>${f('Razón social','d1',s.legal_name)}${f('NIF / CIF','d2',s.nif)}${f('Teléfono','d3',s.phone)}${f('Dirección','d4',s.address)}

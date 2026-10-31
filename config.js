@@ -1,8 +1,5 @@
-// Configuración pública para la tarjeta de fidelización.
-// No dejes claves sensibles reales en el repositorio si no son necesarias.
-// Usa la URL y la anon key de tu proyecto Supabase, o un valor de prueba seguro.
 window.CFG = Object.freeze({
-  URL: "https://TU-PROYECTO.supabase.co",
-  KEY: "TU_SUPABASE_ANON_KEY",
+  URL: "https://dculigjdfdqxesobpkdn.supabase.co",
+  KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWxpZ2pkZmRxeGVzb2Jwa2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNjk2NzYsImV4cCI6MjEwODc0NTY3Nn0.UGbYM8KTpYYI_21ngLpQSj4OCQt5atLmneYZZZijhAw",
   TARJETA: "https://gabrielrpalavecino-dotcom.github.io/tarjeta-de-fidelizacion/tarjeta.html"
 });

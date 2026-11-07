@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>Gestión de tarjetas</title>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Gestión"><title>Gestión de tarjetas</title>
 <style>
 :root{--bg:#f2f5f8;--surface:#fff;--ink:#1b2a41;--mute:#5d6b80;--line:#d9e0e8;--sky:#6fb3e0;--sky-ink:#0d4a73;--gold:#e0a526;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
@@ -55,7 +55,7 @@ button:active{transform:translateY(1px);box-shadow:0 1px 0 #fff inset,0 3px 8px 
 .sheet{background:linear-gradient(180deg,rgba(10,20,35,.35),rgba(10,20,35,.7));backdrop-filter:blur(3px)}
 .qrb{box-shadow:0 16px 28px -16px var(--shadow)}
 </style>
-</head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid</div><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script src="themes.js"></script><script>
+</head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid · f1</div><div class=sheet id=sh><div class=panel id=pn></div></div><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -12505,9 +12505,9 @@ function render(){
   <p class=small style="text-align:left">${brs.map(b=>H(b.name)+': '+logs.filter(l=>l.branch==b.name&&l.kind!='redeem').length+' sellos').join(' · ')}</p>
   <button class="big primary" onclick=scan()>Escanear tarjeta de un cliente</button>
   <button class=big onclick=nueva()>Nueva tarjeta</button>
-  <label>Buscar por código o usuario</label><div class=acts><input id=cod><button onclick="openCard($('#cod').value)">Abrir</button></div><div class=acts><button onclick=logout()>Salir</button></div>${me.is_admin?'':'<div class=acts><button onclick=soporte()>🛠 Servicio técnico</button></div>'}`}
+  <label>Buscar por código o usuario</label><div class=acts><input id=cod><button onclick="openCard($('#cod').value)">Abrir</button></div><div class=acts><button onclick=logout()>Salir</button></div>${me.is_admin?'':'<div class=acts><button onclick=soporte()>🛠 Servicio técnico</button></div>'}${isApp()?'':'<div class=acts><button onclick=instalar()>📲 Instalar la app</button></div>'}`}
 async function login(){try{const m=$('#em').value.trim();await auth({email:m,password:$('#pw').value},'password');localStorage.setItem('sb-mail',m);await init()}catch(e){err(e)}}
-async function init(){try{loadErr='';await load()}catch(e){me=null;loadErr=e.message||String(e)}render()}
+async function init(){try{loadErr='';await load()}catch(e){me=null;loadErr=e.message||String(e)}try{render()}catch(e){$('#app').innerHTML='<p class=note style="margin:30px 0"><b>Error al mostrar el menú</b><br>'+H(e.message||e)+'<br>Revisá que subiste juntos index.html, tarjeta.html y themes.js.</p>'}}
 function elegirSuc(){sheet(`<h2>Sucursal</h2><div class=acts style="flex-direction:column">${brs.map(b=>`<button onclick="localStorage.suc='${H(b.name)}';closeS();render()">${H(b.name)}</button>`).join('')}</div>`)}
 async function nueva(){
   const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=sid.replace(/[^a-z0-9]/gi,'').slice(0,3).toUpperCase()+'-'+[...b].map(x=>A[x%A.length]).join('');let link;
@@ -12571,4 +12571,11 @@ async function scan(){
   }catch(e){if($('#dg'))$('#dg').textContent='La cámara en vivo no abrió ('+e.name+'). Usá "Sacar foto al QR".'}}
 applyStaff(localStorage.lt);
 if(S){$('#app').innerHTML='<p class=sub style="margin-top:34vh;text-align:center">Cargando…</p>';init()}else render();
+let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
+const isApp=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone}catch(e){return false}};
+async function instalar(){
+  if(dip){dip.prompt();await dip.userChoice;dip=null;return}
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),inapp=/FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(navigator.userAgent);
+  sheet(`<h2>📲 Instalar la app</h2><p class=small style="text-align:left">${inapp?'<b>Abrí este enlace en Safari o Chrome</b> para poder instalarla.':ios?'1. Tocá el botón <b>Compartir</b> (el cuadrado con la flecha ↑).<br>2. Elegí <b>Añadir a pantalla de inicio</b>.<br>3. Tocá <b>Añadir</b>.':'1. Tocá el menú <b>⋮</b> del navegador.<br>2. Elegí <b>Instalar app</b> o <b>Añadir a pantalla de inicio</b>.<br>3. Confirmá.'}</p><div class=acts><button onclick=closeS()>Cerrar</button></div>`)}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script></body></html>

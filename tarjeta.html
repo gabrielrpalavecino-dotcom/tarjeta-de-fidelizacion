@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>Mi tarjeta de sellos</title>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Mi tarjeta"><title>Mi tarjeta de sellos</title>
 <style>
 :root{--bg:#e8eef4;--ink:#1b2a41;--mute:#5d6b80;--sky:#6fb3e0;--navy:#0d4a73;--gold:#b97a00;--line:#b8c4d2;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
@@ -41,7 +41,7 @@ body{min-height:100vh;background:radial-gradient(800px 380px at 90% -60px,var(--
 .small button{background:linear-gradient(180deg,#fff,var(--surface2));border:1px solid var(--line2);font-weight:700;border-radius:14px;box-shadow:0 1px 0 #fff inset,0 8px 16px -10px var(--shadow)}
 .small button.add{background:linear-gradient(180deg,var(--prim1),var(--prim2));color:#fff;border-color:var(--prim2);text-shadow:0 1px 1px rgba(0,0,0,.3);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 24px -12px var(--shadow)}
 </style>
-</head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid</div><script src="config.js"></script><script src="themes.js"></script><script>
+</head><body><main id=app></main><div class=foot>© 2026 Krusty Web App · Madrid · f1</div><script src="config.js"></script><script src="themes.js"></script><script>
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -2355,9 +2355,9 @@ async function load(){
     const r=await fetch(C.URL+'/rest/v1/rpc/get_card',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_secret:id})});
     const d=await r.json();
     if(!r.ok){const m=(d&&d.message)||'Error';if($('#t'))$('#t').textContent=m;else $('#app').innerHTML='<p class=note>'+esc(m)+'</p>';return}
-    if(d){const sig=JSON.stringify([d.stamps,d.prizes,d.alias]);if(sig!==seen){seen=sig;wake()}}
+    if(d){const sig=JSON.stringify([d.stamps,d.prizes,d.alias]);if(sig!==seen){seen=sig;wake()}try{localStorage.lc=JSON.stringify({k:id,d})}catch(e){}}
     if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta. Si es una tarjeta anterior, pide tu nuevo QR en el local.</p>';else if(d.alias||!$('#al')||(!$('#al').value&&document.activeElement!=$('#al')))draw(d)
-  }catch(e){if($('#t'))$('#t').textContent='Sin conexión, reintentando…'}}
+  }catch(e){if(/fetch|network|load failed/i.test(e.message||'')){try{const z=JSON.parse(localStorage.lc||'null');if(z&&z.k===id){if(!$('#t'))draw(z.d);const t=$('#t');if(t){t.textContent='Sin conexión: mostrando tu última tarjeta guardada.';return}}}catch(_){}}if($('#t'))$('#t').textContent='Sin conexión, reintentando…';else $('#app').innerHTML='<p class=note><b>No se pudo mostrar la tarjeta.</b><br>'+esc(e.message||e)+'<br><button onclick=load() style="margin-top:10px;padding:10px 16px">Reintentar</button></p>'}}
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
 const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 function icon(z,th){const c=document.createElement('canvas');c.width=c.height=z;const x=c.getContext('2d');x.fillStyle=th.sky||'#5aa7d8';x.fillRect(0,0,z,z);x.font=Math.round(z*.58)+'px serif';x.textAlign='center';x.textBaseline='middle';x.fillText(th.a,z/2,z*.54);return c.toDataURL('image/png')}
@@ -2409,4 +2409,5 @@ const wake=()=>{act=Date.now()};
 const gap=()=>{const i=Date.now()-act;return i<12e4?5000:i<6e5?15000:60000};
 (function tick(){if(!document.hidden)load();setTimeout(tick,gap())})();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){wake();load()}});
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script></body></html>

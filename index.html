@@ -12499,7 +12499,7 @@ function render(){
   if(!S){$('#app').innerHTML=`<h1>Gestión</h1><p class=sub>Ingresá con tu usuario</p><label>Email</label><input id=em type=email autocomplete=username value="${H(localStorage.getItem('sb-mail')||'')}"><label>Contraseña</label><input id=pw type=password autocomplete=current-password><p><button class="big primary" onclick=login()>Entrar</button></p>`;return}
   if(!me){$('#app').innerHTML=loadErr?`<h1>No se pudo cargar</h1><p class=sub>${H(loadErr)}</p><button class="big primary" onclick=init()>Reintentar</button><button class=big onclick=logout()>Salir</button>`:'<h1>Sin comercio</h1><p class=sub>Tu usuario todavía no tiene un comercio asignado. Pedíselo al administrador.</p><button class="big" onclick=logout()>Salir</button>';return}
   const L=mine(),n=Date.now(),s=[['Tarjetas',L.length+(cfg.limit?' / '+cfg.limit:'')],['Activas 30 días',L.filter(c=>n-new Date(c.updated_at)<2592e6).length],['Sellos dados',L.reduce((a,c)=>a+c.total_stamps,0)],['Premios canjeados',L.reduce((a,c)=>a+c.prizes,0)],['Por canjear',L.filter(c=>c.stamps.length>=cfg.goal).length]];
-  const adm=me.is_admin?`<label>Comercio</label><select onchange="localStorage.sid=this.value;init()">${shops.map(x=>`<option value="${x.id}" ${x.id==sid?'selected':''}>${H(x.name)}</option>`).join('')}</select><div class=acts><button class=primary onclick=locales()>🏪 Administrar locales (agregar / quitar)</button></div><div class=small style="text-align:left">${shops.map(x=>{const K=cards.filter(c=>c.shop_id==x.id);return `<b>${H(x.name)}</b>: ${K.length}${x.card_limit?' / '+x.card_limit:''} tarjetas · ${K.reduce((a,c)=>a+c.total_stamps,0)} sellos · ${K.reduce((a,c)=>a+c.prizes,0)} premios`}).join('<br>')}</div>`:'';
+  const adm=me.is_admin?`<label>Comercio</label><select onchange="localStorage.sid=this.value;init()">${shops.map(x=>`<option value="${x.id}" ${x.id==sid?'selected':''}>${H(x.name)}</option>`).join('')}</select><div class=acts><button class=primary onclick=locales()>🏪 Administrar locales (agregar / quitar)</button></div><div class=acts><button onclick=diag()>🩺 Diagnóstico del sistema</button></div><div class=small style="text-align:left">${shops.map(x=>{const K=cards.filter(c=>c.shop_id==x.id);return `<b>${H(x.name)}</b>: ${K.length}${x.card_limit?' / '+x.card_limit:''} tarjetas · ${K.reduce((a,c)=>a+c.total_stamps,0)} sellos · ${K.reduce((a,c)=>a+c.prizes,0)} premios`}).join('<br>')}</div>`:'';
   $('#app').innerHTML=`<div class=top><div><h1>${th().a} ${H(cfg.title)}</h1><p class=sub>${H(suc())} ${brs.length>1?'<button onclick=elegirSuc()>cambiar</button>':''}</p></div>${me.is_admin||me.is_owner?'<button onclick=ajustes()>Ajustes</button>':''}</div>${adm}
   <div class=stats>${s.map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
   <p class=small style="text-align:left">${brs.map(b=>H(b.name)+': '+logs.filter(l=>l.branch==b.name&&l.kind!='redeem').length+' sellos').join(' · ')}</p>
@@ -12511,11 +12511,11 @@ async function init(){try{loadErr='';await load()}catch(e){me=null;loadErr=e.mes
 function elegirSuc(){sheet(`<h2>Sucursal</h2><div class=acts style="flex-direction:column">${brs.map(b=>`<button onclick="localStorage.suc='${H(b.name)}';closeS();render()">${H(b.name)}</button>`).join('')}</div>`)}
 async function nueva(){
   const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint8Array(6)),id=sid.replace(/[^a-z0-9]/gi,'').slice(0,3).toUpperCase()+'-'+[...b].map(x=>A[x%A.length]).join('');let link;
-  try{const r=await api('/rest/v1/cards',{method:'POST',body:J({id,shop_id:sid})});link=C.TARJETA+'#'+r[0].secret;await load();render()}catch(e){return err(e)}
+  try{const r=await api('/rest/v1/cards',{method:'POST',body:J({id,shop_id:sid})});link=C.TARJETA+'#'+(r[0].secret||r[0].id);await load();render()}catch(e){return err(e)}
   sheet(`<h2>Tarjeta nueva</h2><p class=small>Que el cliente escanee el QR, o mandale el link.</p><div class=qrb>${qr(link)}</div><p class=small style="text-align:center"><b>${id}</b></p>${shr(link)}<div class=acts><button onclick=closeS()>Listo</button></div>`)}
 async function openCard(t){
   t=(t||'').trim();if(!t)return;
-  try{const k=t.replace(/[^A-Za-z0-9-]/g,'');let r=k?await api('/rest/v1/cards?or=(id.eq.'+k.toUpperCase()+',secret.eq.'+k.toLowerCase()+')'):[];
+  try{const k=t.replace(/[^A-Za-z0-9-]/g,'');let r=[];if(k){try{r=await api('/rest/v1/cards?or=(id.eq.'+k.toUpperCase()+',secret.eq.'+k.toLowerCase()+')')}catch(e){if(/secret/i.test(e.message))r=await api('/rest/v1/cards?id=eq.'+k.toUpperCase());else throw e}}
   if(!r.length){const q=t.toLowerCase();r=(await api('/rest/v1/cards?alias=ilike.'+encodeURIComponent(t)+'&select=*')).filter(c=>(c.alias||'').toLowerCase()==q)}
   if(!r.length){let o=null;try{o=await api('/rest/v1/rpc/card_owner',{method:'POST',body:J({p_id:t})})}catch(e){}return alert(o?'Esta tarjeta es de «'+o+'». No se puede validar en este local.':'No existe ninguna tarjeta ni usuario "'+t+'"')}
   r.sort((a,b)=>(b.shop_id==sid)-(a.shop_id==sid));
@@ -12526,10 +12526,11 @@ function showCard(){
   sheet(`<h2>${H(c.id)}</h2><p class=small>${c.alias?'👤 '+H(c.alias):'Sin usuario todavía'} · último movimiento: ${new Date(c.updated_at).toLocaleDateString('es-ES')}</p><div class=stars>${c.stamps.map(G).join('')||'—'}</div><p class=small>${c.stamps.length} de ${cfg.goal} · premios canjeados: ${c.prizes}</p>`+
   (full?`<p><b>🎁 ${H(prize(c.stamps))}</b></p><div class=acts><button class=gold onclick=redeem()>Canjear premio</button></div>`
   :`<div class=acts><button class=primary onclick="stamp('s')">${th().a} Sello A</button><button class=primary onclick="stamp('q')">${th().b} Sello B</button></div>`)+`<div class=acts><button onclick=verQR()>Link / QR del cliente</button><button onclick=closeS()>Cerrar</button></div>`)}
-function verQR(){const l=C.TARJETA+'#'+cur.secret;sheet(`<h2>${H(cur.id)}</h2><p class=small>Antes de dar el QR, confirmá con el cliente su usuario y el número de tarjeta.</p><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
-async function rpcCard(fn,b){try{cur=await api('/rest/v1/rpc/'+fn,{method:'POST',body:J(b)});await load();render();showCard()}catch(e){err(e)}}
-const stamp=t=>rpcCard('add_stamp',{p_card:cur.id,p_type:t,p_branch:suc()});
-const redeem=()=>rpcCard('redeem_card',{p_card:cur.id,p_branch:suc()});
+function verQR(){const l=C.TARJETA+'#'+(cur.secret||cur.id);sheet(`<h2>${H(cur.id)}</h2><p class=small>Antes de dar el QR, confirmá con el cliente su usuario y el número de tarjeta.</p><div class=qrb>${qr(l)}</div>${shr(l)}<div class=acts><button onclick=showCard()>Volver</button></div>`)}
+async function legacy(b,k){try{const r=await api('/rest/v1/cards?id=eq.'+cur.id,{method:'PATCH',body:J({...b,updated_at:new Date().toISOString()})});cur=r[0];await api('/rest/v1/log',{method:'POST',body:J({card_id:cur.id,shop_id:cur.shop_id,branch:suc(),kind:k})});await load();render();showCard()}catch(e){err(e)}}
+async function rpcCard(fn,b,leg){try{cur=await api('/rest/v1/rpc/'+fn,{method:'POST',body:J(b)})}catch(e){if(leg&&/could not find the function/i.test(e.message))return leg();return err(e)}try{await load();render();showCard()}catch(e){err(e)}}
+const stamp=t=>rpcCard('add_stamp',{p_card:cur.id,p_type:t,p_branch:suc()},()=>legacy({stamps:[...cur.stamps,t],total_stamps:cur.total_stamps+1},t));
+const redeem=()=>rpcCard('redeem_card',{p_card:cur.id,p_branch:suc()},()=>legacy({stamps:[],prizes:cur.prizes+1},'redeem'));
 function ajustes(){
   const s=shops.find(x=>x.id==sid),own=me.is_admin||me.is_owner,f=(l,i,v,ph)=>`<label>${l}</label><input id=${i} value="${H(v)}" ${ph?`placeholder="${ph}"`:''}>`;
   sheet(`<h2>Ajustes · ${H(s.name)}</h2><h3>Datos del local</h3>${f('Razón social','d1',s.legal_name)}${f('NIF / CIF','d2',s.nif)}${f('Teléfono','d3',s.phone)}${f('Dirección','d4',s.address)}
@@ -12578,4 +12579,19 @@ async function instalar(){
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),inapp=/FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(navigator.userAgent);
   sheet(`<h2>📲 Instalar la app</h2><p class=small style="text-align:left">${inapp?'<b>Abrí este enlace en Safari o Chrome</b> para poder instalarla.':ios?'1. Tocá el botón <b>Compartir</b> (el cuadrado con la flecha ↑).<br>2. Elegí <b>Añadir a pantalla de inicio</b>.<br>3. Tocá <b>Añadir</b>.':'1. Tocá el menú <b>⋮</b> del navegador.<br>2. Elegí <b>Instalar app</b> o <b>Añadir a pantalla de inicio</b>.<br>3. Confirmá.'}</p><div class=acts><button onclick=closeS()>Cerrar</button></div>`)}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+async function diag(){
+  const out=[],ok=(t,v,h)=>out.push((v?'✅ ':'❌ ')+t+(v?'':' — '+h)),miss=x=>/could not find the function/i.test(x||'');
+  sheet('<h2>🩺 Diagnóstico</h2><p class=small>Comprobando…</p>');
+  const t=async(fn,b)=>{try{return{v:await api('/rest/v1/rpc/'+fn,{method:'POST',body:J(b)})}}catch(e){return{e:e.message||String(e)}}};
+  ok('Archivos al día (themes.js)',typeof palette==='function','subí themes.js a GitHub');
+  ok('Tu usuario es administrador',!!(me&&me.is_admin),'corré el SQL de administrador');
+  try{const r=await api('/rest/v1/cards?select=id,secret'),n=r.filter(c=>!c.secret).length;ok('Columna secret en tarjetas',true);ok('Todas las tarjetas tienen secreto ('+r.length+' tarjetas)',!n,n+' sin secreto: corré fase1.sql')}catch(e){ok('Columna secret en tarjetas',false,'falta correr fase1.sql')}
+  let r=await t('get_card',{p_secret:'x'});ok('Función get_card nueva',!r.e,r.e&&miss(r.e)?'falta fase1.sql':r.e);
+  r=await t('set_alias',{p_secret:'x',p_alias:'a'});ok('Función set_alias nueva',!r.e,r.e&&miss(r.e)?'falta fase1.sql':r.e);
+  r=await t('add_stamp',{p_card:'NO-EXISTE',p_type:'s'});ok('Función add_stamp',!!r.e&&!miss(r.e),'falta fase1.sql');
+  r=await t('redeem_card',{p_card:'NO-EXISTE'});ok('Función redeem_card',!!r.e&&!miss(r.e),'falta fase1.sql');
+  r=await t('card_owner',{p_id:'x'});ok('Función card_owner',!r.e,'falta fase1.sql');
+  r=await t('list_staff',{});ok('Función list_staff',!r.e,'falta completar.sql');
+  const bad=out.filter(x=>x[0]=='❌').length;window.__d=out.join('\n');
+  sheet('<h2>🩺 Diagnóstico</h2><div style="text-align:left;line-height:1.8;font-size:15px">'+out.map(H).join('<br>')+'</div><p><b>'+(bad?bad+' problema(s): corré fase1.sql en Supabase y volvé a tocar Diagnóstico.':'Todo en orden.')+'</b></p><div class=acts><button onclick="navigator.clipboard.writeText(window.__d);this.textContent=\'¡Copiado!\'">Copiar resultado</button><button onclick=closeS()>Cerrar</button></div>')}
 </script></body></html>

@@ -2348,15 +2348,20 @@ const qr=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({
 let id=(location.hash.slice(1)||localStorage.getItem('tid')||'').trim().toLowerCase(),last=-1;
 if(location.hash.slice(1))localStorage.setItem('tid',id);
 if(id&&location.hash.slice(1).toLowerCase()!==id)history.replaceState(null,'','#'+id);
-addEventListener('hashchange',()=>{const h=location.hash.slice(1).trim().toLowerCase();if(h){id=h;localStorage.setItem('tid',id);last=-1;load()}});
+addEventListener('hashchange',()=>{const h=location.hash.slice(1).trim().toLowerCase();if(h){id=h;localStorage.setItem('tid',id);last=-1;gone=false;load()}});
+let gone=false;
+async function call(fn,mk){
+  const go=b=>fetch(C.URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify(b)});
+  let r=await go(mk(false)),d=await r.json();
+  if(!r.ok&&/could not find the function/i.test((d&&d.message)||'')){r=await go(mk(true));d=await r.json()}
+  return{r,d}}
 async function load(){
   if(!id){$('#app').innerHTML='<p class=note>Escanea el QR del local para tener tu tarjeta.</p>';return}
   try{
-    const r=await fetch(C.URL+'/rest/v1/rpc/get_card',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_secret:id})});
-    const d=await r.json();
+    const {r,d}=await call('get_card',l=>l?{p_id:id.toUpperCase()}:{p_secret:id});
     if(!r.ok){const m=(d&&d.message)||'Error';if($('#t'))$('#t').textContent=m;else $('#app').innerHTML='<p class=note>'+esc(m)+'</p>';return}
-    if(d){const sig=JSON.stringify([d.stamps,d.prizes,d.alias]);if(sig!==seen){seen=sig;wake()}try{localStorage.lc=JSON.stringify({k:id,d})}catch(e){}}
-    if(!d)$('#app').innerHTML='<p class=note>No encontramos esta tarjeta. Si es una tarjeta anterior, pide tu nuevo QR en el local.</p>';else if(d.alias||!$('#al')||(!$('#al').value&&document.activeElement!=$('#al')))draw(d)
+    if(d){gone=false;const sig=JSON.stringify([d.stamps,d.prizes,d.alias]);if(sig!==seen){seen=sig;wake()}try{localStorage.lc=JSON.stringify({k:id,d})}catch(e){}}
+    if(!d){gone=true;$('#app').innerHTML='<p class=note>No encontramos esta tarjeta. Si es una tarjeta anterior, pide tu nuevo QR en el local.<br><button onclick="gone=false;load()" style="margin-top:10px;padding:10px 16px">Reintentar</button></p>'}else if(d.alias||!$('#al')||(!$('#al').value&&document.activeElement!=$('#al')))draw(d)
   }catch(e){if(/fetch|network|load failed/i.test(e.message||'')){try{const z=JSON.parse(localStorage.lc||'null');if(z&&z.k===id){if(!$('#t'))draw(z.d);const t=$('#t');if(t){t.textContent='Sin conexión: mostrando tu última tarjeta guardada.';return}}}catch(_){}}if($('#t'))$('#t').textContent='Sin conexión, reintentando…';else $('#app').innerHTML='<p class=note><b>No se pudo mostrar la tarjeta.</b><br>'+esc(e.message||e)+'<br><button onclick=load() style="margin-top:10px;padding:10px 16px">Reintentar</button></p>'}}
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e});
 const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone;
@@ -2376,7 +2381,7 @@ async function addHome(){
 async function saveAlias(){
   const v=$('#al').value.trim(),m=$('#ae');
   if(!/^[A-Za-z0-9._-]{3,20}$/.test(v)||!/[A-Za-z]/.test(v)){m.textContent=' Usa de 3 a 20 caracteres, con al menos una letra y sin espacios (letras, números, punto, guion).';return}
-  try{const r=await fetch(C.URL+'/rest/v1/rpc/set_alias',{method:'POST',headers:{apikey:C.KEY,Authorization:'Bearer '+C.KEY,'Content-Type':'application/json'},body:JSON.stringify({p_secret:id,p_alias:v})}),x=await r.json();
+  try{const {d:x}=await call('set_alias',l=>l?{p_id:id.toUpperCase(),p_alias:v}:{p_secret:id,p_alias:v});
   if(x==='ok')load();else m.textContent=x==='taken'?' Ese usuario ya está en uso, prueba otro.':x==='limit'?' Demasiados intentos, espera unos minutos.':' No se pudo guardar el usuario.'}catch(e){m.textContent=' Sin conexión, inténtalo de nuevo.'}}
 let D0=null;
 async function savePic(){
@@ -2407,7 +2412,7 @@ try{applyTheme(localStorage.tt)}catch(e){}let seen='',act=Date.now();
 const wake=()=>{act=Date.now()};
 ['pointerdown','keydown','focus'].forEach(e=>addEventListener(e,wake,{passive:true}));
 const gap=()=>{const i=Date.now()-act;return i<12e4?5000:i<6e5?15000:60000};
-(function tick(){if(!document.hidden)load();setTimeout(tick,gap())})();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){wake();load()}});
+(function tick(){if(!document.hidden&&!gone)load();setTimeout(tick,gap())})();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){wake();if(!gone)load()}});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script></body></html>
